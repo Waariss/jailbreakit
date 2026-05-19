@@ -1,3 +1,3 @@
-module github.com/waaris/jailbreakit
+module github.com/Waariss/jailbreakit
 
 go 1.24.3

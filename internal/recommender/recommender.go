@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/waaris/jailbreakit/internal/device"
-	"github.com/waaris/jailbreakit/internal/matrix"
+	"github.com/Waariss/jailbreakit/internal/device"
+	"github.com/Waariss/jailbreakit/internal/matrix"
 )
 
 type Result struct {
@@ -45,6 +45,14 @@ func Recommend(info device.Info) Result {
 					Type:    "semi-untethered",
 					Reason:  "Matched iOS compatibility matrix from " + source + ".",
 				})
+			case "chimera", "unc0ver", "checkra1n", "odyssey", "taurine":
+				result.Options = append(result.Options, Option{
+					Name:    entry.Tool,
+					Version: entry.Version,
+					Mode:    "recommend-only",
+					Type:    statusType(entry.Status),
+					Reason:  "Matched iOS compatibility matrix from " + source + ". Runner automation is not implemented yet.",
+				})
 			}
 		}
 		if len(result.Options) > 0 {
@@ -52,7 +60,8 @@ func Recommend(info device.Info) Result {
 		}
 	}
 
-	if checkm8Supported(info.Chip) && majorVersion(info.OSVersion) >= 15 {
+	major := majorVersion(info.OSVersion)
+	if checkm8Supported(info.Chip) && major >= 15 && major <= 16 {
 		result.Options = append(result.Options, Option{
 			Name:    "palera1n",
 			Version: "2.x",
@@ -62,18 +71,12 @@ func Recommend(info device.Info) Result {
 		})
 	}
 
-	if dopamineLikelySupported(info.OSVersion) {
-		result.Options = append(result.Options, Option{
-			Name:    "Dopamine",
-			Version: "2.x",
-			Mode:    "rootless",
-			Type:    "semi-untethered",
-			Reason:  "Useful for lab devices where sideloading is easier than DFU/checkm8 flow.",
-		})
-	}
-
 	if len(result.Options) == 0 {
-		result.Warnings = append(result.Warnings, "No local rule matched. Verify the exact model/iOS against The Apple Wiki before proceeding.")
+		if majorVersion(info.OSVersion) >= 17 {
+			result.Warnings = append(result.Warnings, "No tool available for this iOS version in jailbreakit.")
+		} else {
+			result.Warnings = append(result.Warnings, "No local rule matched. Verify the exact model/iOS against The Apple Wiki before proceeding.")
+		}
 	}
 	if info.OSVersion == "" {
 		result.Warnings = append(result.Warnings, "iOS version is unknown; recommendation confidence is low.")
@@ -85,6 +88,13 @@ func Recommend(info device.Info) Result {
 	return result
 }
 
+func statusType(status string) string {
+	if strings.EqualFold(status, "yes") || status == "" {
+		return "semi-untethered"
+	}
+	return strings.ToLower(status)
+}
+
 func checkm8Supported(chip string) bool {
 	switch strings.ToUpper(strings.TrimSpace(chip)) {
 	case "A8", "A8X", "A9", "A9X", "A10", "A10X", "A11":
@@ -94,36 +104,12 @@ func checkm8Supported(chip string) bool {
 	}
 }
 
-func dopamineLikelySupported(version string) bool {
-	major := majorVersion(version)
-	if major == 15 {
-		return true
-	}
-	if major == 16 {
-		minor := minorVersion(version)
-		return minor >= 0 && minor <= 6
-	}
-	return false
-}
-
 func majorVersion(version string) int {
 	parts := strings.Split(version, ".")
 	if len(parts) == 0 {
 		return -1
 	}
 	n, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return -1
-	}
-	return n
-}
-
-func minorVersion(version string) int {
-	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
-		return 0
-	}
-	n, err := strconv.Atoi(parts[1])
 	if err != nil {
 		return -1
 	}

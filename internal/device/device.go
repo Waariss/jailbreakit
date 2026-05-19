@@ -3,6 +3,8 @@ package device
 import (
 	"bufio"
 	"bytes"
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -13,23 +15,23 @@ type Info struct {
 	ModelName   string
 	Chip        string
 	OSVersion   string
+	Family      string
 }
 
-var productMap = map[string]Info{
-	"iPhone8,1":  {ProductType: "iPhone8,1", ModelName: "iPhone 6s", Chip: "A9"},
-	"iPhone8,2":  {ProductType: "iPhone8,2", ModelName: "iPhone 6s Plus", Chip: "A9"},
-	"iPhone8,4":  {ProductType: "iPhone8,4", ModelName: "iPhone SE (1st generation)", Chip: "A9"},
-	"iPhone9,1":  {ProductType: "iPhone9,1", ModelName: "iPhone 7", Chip: "A10"},
-	"iPhone9,2":  {ProductType: "iPhone9,2", ModelName: "iPhone 7 Plus", Chip: "A10"},
-	"iPhone9,3":  {ProductType: "iPhone9,3", ModelName: "iPhone 7", Chip: "A10"},
-	"iPhone9,4":  {ProductType: "iPhone9,4", ModelName: "iPhone 7 Plus", Chip: "A10"},
-	"iPhone10,1": {ProductType: "iPhone10,1", ModelName: "iPhone 8", Chip: "A11"},
-	"iPhone10,2": {ProductType: "iPhone10,2", ModelName: "iPhone 8 Plus", Chip: "A11"},
-	"iPhone10,3": {ProductType: "iPhone10,3", ModelName: "iPhone X", Chip: "A11"},
-	"iPhone10,4": {ProductType: "iPhone10,4", ModelName: "iPhone 8", Chip: "A11"},
-	"iPhone10,5": {ProductType: "iPhone10,5", ModelName: "iPhone 8 Plus", Chip: "A11"},
-	"iPhone10,6": {ProductType: "iPhone10,6", ModelName: "iPhone X", Chip: "A11"},
+//go:embed product-map.json
+var productMapJSON []byte
+
+type productData struct {
+	Products map[string]productEntry `json:"products"`
 }
+
+type productEntry struct {
+	ModelName string `json:"model_name"`
+	Chip      string `json:"chip"`
+	Family    string `json:"family"`
+}
+
+var productMap = loadProductMap()
 
 func Detect() (Info, error) {
 	if _, ok := LookPath("ideviceinfo"); ok {
@@ -93,6 +95,23 @@ func Enrich(info Info) Info {
 	}
 	product.OSVersion = info.OSVersion
 	return product
+}
+
+func loadProductMap() map[string]Info {
+	var data productData
+	if err := json.Unmarshal(productMapJSON, &data); err != nil {
+		return map[string]Info{}
+	}
+	products := make(map[string]Info, len(data.Products))
+	for productType, entry := range data.Products {
+		products[productType] = Info{
+			ProductType: productType,
+			ModelName:   entry.ModelName,
+			Chip:        entry.Chip,
+			Family:      entry.Family,
+		}
+	}
+	return products
 }
 
 func firstNonEmpty(values ...string) string {

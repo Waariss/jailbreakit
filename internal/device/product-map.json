@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "products": {
+    "iPhone8,1": {"model_name": "iPhone 6s", "chip": "A9", "family": "iPhone"},
+    "iPhone8,2": {"model_name": "iPhone 6s Plus", "chip": "A9", "family": "iPhone"},
+    "iPhone8,4": {"model_name": "iPhone SE (1st generation)", "chip": "A9", "family": "iPhone"},
+    "iPhone9,1": {"model_name": "iPhone 7", "chip": "A10", "family": "iPhone"},
+    "iPhone9,2": {"model_name": "iPhone 7 Plus", "chip": "A10", "family": "iPhone"},
+    "iPhone9,3": {"model_name": "iPhone 7", "chip": "A10", "family": "iPhone"},
+    "iPhone9,4": {"model_name": "iPhone 7 Plus", "chip": "A10", "family": "iPhone"},
+    "iPhone10,1": {"model_name": "iPhone 8", "chip": "A11", "family": "iPhone"},
+    "iPhone10,2": {"model_name": "iPhone 8 Plus", "chip": "A11", "family": "iPhone"},
+    "iPhone10,3": {"model_name": "iPhone X", "chip": "A11", "family": "iPhone"},
+    "iPhone10,4": {"model_name": "iPhone 8", "chip": "A11", "family": "iPhone"},
+    "iPhone10,5": {"model_name": "iPhone 8 Plus", "chip": "A11", "family": "iPhone"},
+    "iPhone10,6": {"model_name": "iPhone X", "chip": "A11", "family": "iPhone"},
+    "iPad6,3": {"model_name": "iPad Pro 9.7-inch", "chip": "A9X", "family": "iPad"},
+    "iPad6,4": {"model_name": "iPad Pro 9.7-inch", "chip": "A9X", "family": "iPad"},
+    "iPad6,7": {"model_name": "iPad Pro 12.9-inch (1st generation)", "chip": "A9X", "family": "iPad"},
+    "iPad6,8": {"model_name": "iPad Pro 12.9-inch (1st generation)", "chip": "A9X", "family": "iPad"},
+    "iPad7,1": {"model_name": "iPad Pro 12.9-inch (2nd generation)", "chip": "A10X", "family": "iPad"},
+    "iPad7,2": {"model_name": "iPad Pro 12.9-inch (2nd generation)", "chip": "A10X", "family": "iPad"},
+    "iPad7,3": {"model_name": "iPad Pro 10.5-inch", "chip": "A10X", "family": "iPad"},
+    "iPad7,4": {"model_name": "iPad Pro 10.5-inch", "chip": "A10X", "family": "iPad"},
+    "iPod9,1": {"model_name": "iPod touch (7th generation)", "chip": "A10", "family": "iPod"},
+    "AppleTV5,3": {"model_name": "Apple TV HD", "chip": "A8", "family": "Apple TV"},
+    "AppleTV6,2": {"model_name": "Apple TV 4K (1st generation)", "chip": "A10X", "family": "Apple TV"},
+    "iBridge2,1": {"model_name": "Apple T2 Security Chip", "chip": "T2", "family": "T2"}
+  }
+}

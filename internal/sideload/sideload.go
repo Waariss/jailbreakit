@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/waaris/jailbreakit/internal/device"
+	"github.com/Waariss/jailbreakit/internal/device"
 )
 
 const envCommand = "JAILBREAKIT_SIDELOAD_CMD"
@@ -138,46 +138,17 @@ func Run(ipaPath, command string, stdout io.Writer) error {
 	return runOnce(ipaPath, command, stdout, true)
 }
 
-func RunWithLoginRetry(ipaPath, command, username string, stdout io.Writer) error {
-	err := runOnce(ipaPath, command, stdout, true)
-	if err == nil {
-		return nil
-	}
-	if !IsNoAccountError(err) {
-		return err
-	}
-	fmt.Fprintln(stdout, "[!] plumesign account is not logged in")
-	if err := Login(username, stdout); err != nil {
-		return err
-	}
-	if err := RunTerminal(ipaPath, command, stdout); err != nil {
-		return err
-	}
-	fmt.Fprintln(stdout, "[+] Dopamine install done")
-	return nil
-}
-
 func IsNoAccountError(err error) bool {
 	return strings.Contains(strings.ToLower(err.Error()), "no account selected")
 }
 
-func IsNotTerminalError(err error) bool {
-	return strings.Contains(strings.ToLower(err.Error()), "not a terminal")
-}
-
 func Login(username string, stdout io.Writer) error {
-	return LoginWithPassword(username, "", stdout)
-}
-
-func LoginWithPassword(username, password string, stdout io.Writer) error {
 	args := []string{"account", "login"}
 	if strings.TrimSpace(username) != "" {
 		args = append(args, "--username", strings.TrimSpace(username))
 	}
-	if password != "" {
-		args = append(args, "--password", password)
-	}
 	fmt.Fprintln(stdout, "[*] Logging in to Apple Developer account")
+	fmt.Fprintln(stdout, "[*] The signer will prompt for password and 2FA if required")
 	fmt.Fprintln(stdout, "Apple ID 2FA Code: enter the code if Apple asks below")
 	cmd := exec.Command("./"+defaultSignerPath, args...)
 	cmd.Stdout = stdout

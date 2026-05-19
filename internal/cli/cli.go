@@ -7,13 +7,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/waaris/jailbreakit/internal/deps"
-	"github.com/waaris/jailbreakit/internal/device"
-	"github.com/waaris/jailbreakit/internal/downloader"
-	"github.com/waaris/jailbreakit/internal/recommender"
-	"github.com/waaris/jailbreakit/internal/runner/palera1n"
-	"github.com/waaris/jailbreakit/internal/sideload"
-	"github.com/waaris/jailbreakit/internal/troubleshoot"
+	"github.com/Waariss/jailbreakit/internal/deps"
+	"github.com/Waariss/jailbreakit/internal/device"
+	"github.com/Waariss/jailbreakit/internal/downloader"
+	"github.com/Waariss/jailbreakit/internal/recommender"
+	"github.com/Waariss/jailbreakit/internal/runner/palera1n"
+	"github.com/Waariss/jailbreakit/internal/sideload"
+	"github.com/Waariss/jailbreakit/internal/troubleshoot"
+	"github.com/Waariss/jailbreakit/internal/version"
 )
 
 func Run(args []string) error {
@@ -34,6 +35,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		}
 	case "doctor":
 		return doctorWithArgs(args[1:], stdin, stdout)
+	case "version":
+		printVersion(stdout)
 	case "detect":
 		return detect(stdout)
 	case "recommend":
@@ -63,9 +66,20 @@ Common:
   jailbreakit doctor
   jailbreakit detect
   jailbreakit recommend --ios 15.8.8 --product iPhone8,1
+  jailbreakit version
 
 Advanced:
   jailbreakit help advanced`)
+}
+
+func printVersion(w io.Writer) {
+	fmt.Fprintf(w, "jailbreakit %s by %s\n", version.Version, version.Author)
+	if version.Commit != "unknown" {
+		fmt.Fprintf(w, "commit: %s\n", version.Commit)
+	}
+	if version.Date != "unknown" {
+		fmt.Fprintf(w, "built:  %s\n", version.Date)
+	}
 }
 
 func printAdvancedHelp(w io.Writer) {
@@ -90,7 +104,7 @@ Utility:
 func wizard(stdin io.Reader, stdout, stderr io.Writer) error {
 	prompt := newPrompt(stdin, stdout)
 
-	fmt.Fprintln(stdout, "jailbreakit")
+	fmt.Fprintf(stdout, "jailbreakit %s by %s\n", version.Version, version.Author)
 	if err := ensureDependencies(prompt, stdout); err != nil {
 		return err
 	}
@@ -140,7 +154,9 @@ func wizard(stdin io.Reader, stdout, stderr io.Writer) error {
 	case "dopamine":
 		return runDopamineInteractive(prompt, "", "downloads", "", option.Version, stdout)
 	default:
-		return fmt.Errorf("no wizard handler for %s", option.Name)
+		fmt.Fprintf(stdout, "[!] %s %s is recommended for this iOS version, but jailbreakit does not automate this runner yet.\n", option.Name, option.Version)
+		fmt.Fprintln(stdout, "[*] Use the upstream tool/guide for this route, or choose another available route if listed.")
+		return nil
 	}
 }
 
@@ -382,8 +398,7 @@ func runDopamineInteractive(prompt *prompt, url, out, sideloadCmd, version strin
 func runSideloadInteractive(prompt *prompt, path, sideloadCmd string, stdout io.Writer) error {
 	fmt.Fprintln(stdout, "[*] Apple ID login")
 	username := prompt.ask("Apple ID email")
-	password := prompt.askSecret("Apple ID password")
-	if err := sideload.LoginWithPassword(username, password, stdout); err != nil {
+	if err := sideload.Login(username, stdout); err != nil {
 		return err
 	}
 	if err := sideload.RunTerminal(path, sideloadCmd, stdout); err != nil {
@@ -487,6 +502,7 @@ func printDevice(w io.Writer, info device.Info) {
 	fmt.Fprintf(w, "ProductType:  %s\n", valueOrUnknown(info.ProductType))
 	fmt.Fprintf(w, "Model:        %s\n", valueOrUnknown(info.ModelName))
 	fmt.Fprintf(w, "Chip:         %s\n", valueOrUnknown(info.Chip))
+	fmt.Fprintf(w, "Family:       %s\n", valueOrUnknown(info.Family))
 	fmt.Fprintf(w, "iOS:          %s\n", valueOrUnknown(info.OSVersion))
 }
 

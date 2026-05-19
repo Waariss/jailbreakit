@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/waaris/jailbreakit/internal/device"
+	"github.com/Waariss/jailbreakit/internal/device"
 )
 
 type Dependency struct {

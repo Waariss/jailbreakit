@@ -1,5 +1,9 @@
 # jailbreakit
 
+<div align="center">
+  <img src="media/jailbreakit.png" width="60%" alt="jailbreakit logo">
+</div>
+
 `jailbreakit` is a CLI helper for authorized iOS pentesting workflows.
 
 It detects a connected iPhone, checks jailbreak compatibility, recommends a route, and guides the user through `palera1n` or Dopamine setup. The goal is not to create a new jailbreak. The goal is to make the repetitive setup work easier for pentesters and security researchers working on devices they are allowed to test.
@@ -21,6 +25,15 @@ iOS jailbreak setup for pentesting is repetitive and easy to get wrong:
 ```sh
 jailbreakit
 ```
+
+## Platform Support
+
+Current target platforms:
+
+- macOS
+- Linux
+
+Windows is not supported yet. The project is currently iPhone-first; iPad, iPod, Apple TV, and T2 metadata exist as initial compatibility data, but the main tested workflow is iPhone jailbreak setup for authorized security testing.
 
 ## Install
 
@@ -59,6 +72,18 @@ Core tools:
 - `libimobiledevice` for `ideviceinfo` device detection
 - `curl` or network access for downloads
 
+macOS:
+
+```sh
+brew install libimobiledevice curl
+```
+
+Linux package names vary by distribution. Debian/Ubuntu-style systems usually need:
+
+```sh
+sudo apt install -y libimobiledevice-utils curl
+```
+
 Check your machine:
 
 ```sh
@@ -87,6 +112,7 @@ Common utility commands:
 ./jailbreakit doctor
 ./jailbreakit detect
 ./jailbreakit recommend --ios 15.8.8 --product iPhone8,1
+./jailbreakit version
 ```
 
 Advanced commands are hidden from the default help:
@@ -95,13 +121,29 @@ Advanced commands are hidden from the default help:
 ./jailbreakit help advanced
 ```
 
+## Development
+
+Run tests:
+
+```sh
+go test ./...
+```
+
+Check formatting:
+
+```sh
+gofmt -w cmd internal
+```
+
+GitHub Actions runs `gofmt` and `go test ./...` on pushes and pull requests. Tagged releases build macOS and Linux binaries.
+
 ## What It Does
 
 Guided mode:
 
 1. Detects the connected device.
 2. Maps `ProductType` to model and chip.
-3. Checks the iOS jailbreak matrix from The Apple Wiki, with embedded fallback data when the site is unavailable.
+3. Checks the iOS jailbreak matrix from The Apple Wiki, with versioned embedded fallback data when the site is unavailable.
 4. Shows compatible jailbreak routes.
 5. Runs `palera1n`, or downloads and sideloads the matching Dopamine IPA.
 6. Prints the next iPhone-side steps, including developer-profile trust instructions.
@@ -125,6 +167,8 @@ For Dopamine `2.5 Beta 3`, `jailbreakit` resolves the release tag to `2.5b3` and
 https://github.com/opa334/Dopamine/releases/download/2.5b3/Dopamine.ipa
 ```
 
+Routes outside the currently automated runners are still shown as recommendations when compatibility data is available. For example, iOS 12/13/14 may show tools such as Chimera, unc0ver, checkra1n, Odyssey, or Taurine as `recommend-only`. Those routes require the upstream tool or guide until runner automation is implemented.
+
 ## Dopamine Sideloading
 
 `jailbreakit` is CLI-first. If no signer is available, guided mode can download the `plumesign` CLI, mark it executable, and continue.
@@ -146,11 +190,10 @@ The signer is saved to:
 Apple ID handling:
 
 - `jailbreakit` does not store Apple ID credentials.
-- Where possible, signing is delegated to the selected local signer.
-- If credentials are required, they are passed only to the local signer process and are never written to disk by `jailbreakit`.
+- Signing and authentication are delegated to the selected local signer.
+- If credentials are required, the local signer handles password and 2FA prompts interactively.
 - The selected signer may maintain its own local authentication or session state.
 - Users are encouraged to use an app-specific password or a dedicated lab Apple ID.
-- If Apple requires 2FA, the signer handles the verification flow.
 
 After Dopamine is installed, trust the developer profile on the iPhone:
 
@@ -191,6 +234,15 @@ Guided mode handles this flow and tells the user when the second step is needed.
 - No Apple ID credential storage
 - No device identifiers are uploaded by default
 - Downloads are performed only from configured upstream project URLs
+
+## Data
+
+Compatibility and device metadata are versioned with the binary:
+
+- `internal/matrix/compatibility.json` contains embedded fallback jailbreak data.
+- `internal/device/product-map.json` contains embedded product metadata for iPhone-first detection, with initial iPad, iPod, Apple TV, and T2 coverage.
+
+The Apple Wiki remains the preferred live source when reachable.
 
 ## Disclaimer
 

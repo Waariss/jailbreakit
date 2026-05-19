@@ -1,6 +1,8 @@
 package matrix
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +17,22 @@ type Entry struct {
 	Version string
 	Status  string
 	Source  string
+}
+
+//go:embed compatibility.json
+var compatibilityJSON []byte
+
+type compatibilityData struct {
+	Version int                  `json:"version"`
+	Source  string               `json:"source"`
+	Entries []compatibilityEntry `json:"entries"`
+}
+
+type compatibilityEntry struct {
+	IOS    string  `json:"ios"`
+	MinIOS string  `json:"min_ios"`
+	MaxIOS string  `json:"max_ios"`
+	Tools  []Entry `json:"tools"`
 }
 
 func LookupIOS(version string) ([]Entry, string) {
@@ -75,7 +93,7 @@ func parseText(version, text string) []Entry {
 	}
 
 	var entries []Entry
-	for _, tool := range []string{"palera1n", "Dopamine"} {
+	for _, tool := range []string{"Chimera", "unc0ver", "checkra1n", "Odyssey", "Taurine", "palera1n", "Dopamine"} {
 		entry, ok := parseTool(row, tool)
 		if ok {
 			entry.Source = sourceURL(version)
@@ -103,21 +121,66 @@ func parseTool(row, tool string) (Entry, bool) {
 }
 
 func fallback(version string) []Entry {
-	major := majorVersion(version)
-	var entries []Entry
-	switch major {
-	case 15:
-		entries = append(entries,
-			Entry{Tool: "palera1n", Version: "2.2.1", Status: "Semi-Tethered", Source: "embedded fallback"},
-			Entry{Tool: "Dopamine", Version: "2.5 Beta 3", Status: "Yes", Source: "embedded fallback"},
-		)
-	case 16:
-		entries = append(entries,
-			Entry{Tool: "palera1n", Version: "2.2.1", Status: "Semi-Tethered", Source: "embedded fallback"},
-			Entry{Tool: "Dopamine", Version: "2.5 Beta 3", Status: "Yes", Source: "embedded fallback"},
-		)
+	var data compatibilityData
+	if err := json.Unmarshal(compatibilityJSON, &data); err != nil {
+		return nil
 	}
-	return entries
+	for _, item := range data.Entries {
+		if item.IOS != "" && item.IOS != version {
+			continue
+		}
+		if item.MinIOS != "" && item.MaxIOS != "" && !versionInRange(version, item.MinIOS, item.MaxIOS) {
+			continue
+		}
+		entries := append([]Entry(nil), item.Tools...)
+		for i := range entries {
+			entries[i].Source = "embedded fallback v" + strconv.Itoa(data.Version)
+		}
+		return entries
+	}
+	return nil
+}
+
+func versionInRange(version, min, max string) bool {
+	return compareVersion(version, min) >= 0 && compareVersion(version, max) <= 0
+}
+
+func compareVersion(a, b string) int {
+	ap := versionParts(a)
+	bp := versionParts(b)
+	maxLen := len(ap)
+	if len(bp) > maxLen {
+		maxLen = len(bp)
+	}
+	for len(ap) < maxLen {
+		ap = append(ap, 0)
+	}
+	for len(bp) < maxLen {
+		bp = append(bp, 0)
+	}
+	for i := 0; i < maxLen; i++ {
+		if ap[i] > bp[i] {
+			return 1
+		}
+		if ap[i] < bp[i] {
+			return -1
+		}
+	}
+	return 0
+}
+
+func versionParts(version string) []int {
+	raw := strings.Split(version, ".")
+	parts := make([]int, 0, len(raw))
+	for _, item := range raw {
+		n, err := strconv.Atoi(item)
+		if err != nil {
+			parts = append(parts, 0)
+			continue
+		}
+		parts = append(parts, n)
+	}
+	return parts
 }
 
 func sourceURL(version string) string {

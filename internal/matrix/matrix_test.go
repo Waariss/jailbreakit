@@ -15,6 +15,22 @@ func TestFallbackIOS15(t *testing.T) {
 	}
 }
 
+func TestFallbackIsExact(t *testing.T) {
+	if entries := fallback("17.0"); len(entries) != 0 {
+		t.Fatalf("expected no fallback for 17.0, got %#v", entries)
+	}
+}
+
+func TestFallbackIOS12(t *testing.T) {
+	entries := fallback("12.1")
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(entries))
+	}
+	if entries[0].Tool != "Chimera" || entries[1].Tool != "unc0ver" {
+		t.Fatalf("unexpected entries: %#v", entries)
+	}
+}
+
 func TestParseText(t *testing.T) {
 	text := `## iOS
 15.8.8 palera1n 2.2.1 Semi-Tethered

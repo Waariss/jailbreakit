@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/waaris/jailbreakit/internal/cli"
+	"github.com/Waariss/jailbreakit/internal/cli"
 )
 
 func main() {

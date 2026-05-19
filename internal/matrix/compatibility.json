@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "source": "embedded fallback; primary source is The Apple Wiki when reachable",
+  "entries": [
+    {
+      "min_ios": "12.0",
+      "max_ios": "12.5.8",
+      "tools": [
+        {"tool": "Chimera", "version": "1.6.5", "status": "Yes"},
+        {"tool": "unc0ver", "version": "8.0.2", "status": "Yes"}
+      ]
+    },
+    {
+      "min_ios": "13.0",
+      "max_ios": "13.7",
+      "tools": [
+        {"tool": "checkra1n", "version": "0.12.4", "status": "Semi-Tethered"},
+        {"tool": "unc0ver", "version": "6.2.0", "status": "Yes"},
+        {"tool": "Odyssey", "version": "1.4.3", "status": "Yes"}
+      ]
+    },
+    {
+      "min_ios": "14.0",
+      "max_ios": "14.8.1",
+      "tools": [
+        {"tool": "checkra1n", "version": "0.12.4", "status": "Semi-Tethered"},
+        {"tool": "Taurine", "version": "1.1.7-3", "status": "Yes"},
+        {"tool": "unc0ver", "version": "8.0.2", "status": "Yes"}
+      ]
+    },
+    {
+      "ios": "15.8.8",
+      "tools": [
+        {"tool": "palera1n", "version": "2.2.1", "status": "Semi-Tethered"},
+        {"tool": "Dopamine", "version": "2.5 Beta 3", "status": "Yes"}
+      ]
+    },
+    {
+      "ios": "16.7.10",
+      "tools": [
+        {"tool": "palera1n", "version": "2.2.1", "status": "Semi-Tethered"},
+        {"tool": "Dopamine", "version": "2.5 Beta 3", "status": "Yes"}
+      ]
+    }
+  ]
+}

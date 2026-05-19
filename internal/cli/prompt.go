@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -41,27 +39,6 @@ func (p *prompt) askDefault(label, fallback string) string {
 		return fallback
 	}
 	return value
-}
-
-func (p *prompt) askSecret(label string) string {
-	for {
-		fmt.Fprintf(p.writer, "%s: ", label)
-		disableEcho := exec.Command("stty", "-echo")
-		disableEcho.Stdin = os.Stdin
-		_ = disableEcho.Run()
-		value, _ := p.reader.ReadString('\n')
-		enableEcho := exec.Command("stty", "echo")
-		enableEcho.Stdin = os.Stdin
-		_ = enableEcho.Run()
-		fmt.Fprintln(p.writer)
-		value = strings.TrimSpace(value)
-		if value != "" {
-			return value
-		}
-		if _, ok := p.writer.(*os.File); ok {
-			continue
-		}
-	}
 }
 
 func (p *prompt) confirm(label string, fallback bool) bool {
