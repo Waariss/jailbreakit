@@ -1,5 +1,7 @@
 # jailbreakit
 
+[![ci](https://github.com/Waariss/jailbreakit/actions/workflows/ci.yml/badge.svg)](https://github.com/Waariss/jailbreakit/actions/workflows/ci.yml)
+
 <div align="center">
   <img src="media/jailbreakit.png" width="60%" alt="jailbreakit logo">
 </div>
