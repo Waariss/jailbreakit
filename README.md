@@ -8,7 +8,7 @@
   <img src="media/jailbreakit.png" width="45%" alt="jailbreakit logo">
 </div>
 
-`jailbreakit` is a CLI helper for authorized iOS pentesting workflows.
+`jailbreakit` is a CLI helper for authorized iOS pentesting and security research only.
 
 It detects a connected iPhone, checks jailbreak compatibility, recommends a route, and guides the user through `palera1n` or Dopamine setup. The goal is not to create a new jailbreak. The goal is to make the repetitive setup work easier for pentesters and security researchers working on devices they are allowed to test.
 
@@ -281,11 +281,11 @@ The Apple Wiki remains the preferred live source when reachable.
 
 Do not use this tool on devices you do not own or do not have explicit written permission to assess.
 
-This project is a helper/orchestrator. It is not affiliated with Apple, `palera1n`, Dopamine, Impactor, or The Apple Wiki.
+This project is a helper/orchestrator. It is not sponsored, endorsed by, or affiliated with Apple, `palera1n`, Dopamine, Impactor, or The Apple Wiki.
 
 Jailbreaking can cause data loss, boot issues, restore requirements, or device instability. We are not responsible for any data loss, device damage, bricked devices, account issues, failed jailbreak attempts, or any other outcome caused by using this tool or the underlying third-party tools. When using `palera1n`, Dopamine, `plumesign`, or any related tooling, the user accepts full responsibility for anything that happens to their device during the process.
 
-This tool does not bypass iCloud, Activation Lock, MDM, passcodes, DRM/FairPlay, or device ownership protections.
+This tool does not bypass, and must not be used to attempt to bypass, iCloud, Activation Lock, MDM, passcodes, DRM/FairPlay, or device ownership protections.
 
 ## Credits
 
