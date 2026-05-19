@@ -1,6 +1,8 @@
 # jailbreakit
 
 [![ci](https://github.com/Waariss/jailbreakit/actions/workflows/ci.yml/badge.svg)](https://github.com/Waariss/jailbreakit/actions/workflows/ci.yml)
+[![release](https://github.com/Waariss/jailbreakit/actions/workflows/release.yml/badge.svg)](https://github.com/Waariss/jailbreakit/actions/workflows/release.yml)
+[![version](https://img.shields.io/github/v/release/Waariss/jailbreakit?label=version)](https://github.com/Waariss/jailbreakit/releases)
 
 <div align="center">
   <img src="media/jailbreakit.png" width="45%" alt="jailbreakit logo">
@@ -64,6 +66,20 @@ Install into your Go bin path:
 go install ./cmd/jailbreakit
 jailbreakit
 ```
+
+### macOS Release Binary
+
+Release binaries are not notarized yet. If macOS Gatekeeper blocks a downloaded binary with a message like "Apple could not verify ... is free of malware", remove the quarantine attribute and make it executable:
+
+```sh
+chmod +x jailbreakit-darwin-arm64
+xattr -d com.apple.quarantine jailbreakit-darwin-arm64
+./jailbreakit-darwin-arm64
+```
+
+For Intel Macs, replace `jailbreakit-darwin-arm64` with `jailbreakit-darwin-amd64`.
+
+Long term, signed and notarized macOS releases are planned.
 
 ## Requirements
 
