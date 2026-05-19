@@ -3,7 +3,7 @@
 [![ci](https://github.com/Waariss/jailbreakit/actions/workflows/ci.yml/badge.svg)](https://github.com/Waariss/jailbreakit/actions/workflows/ci.yml)
 
 <div align="center">
-  <img src="media/jailbreakit.png" width="60%" alt="jailbreakit logo">
+  <img src="media/jailbreakit.png" width="45%" alt="jailbreakit logo">
 </div>
 
 `jailbreakit` is a CLI helper for authorized iOS pentesting workflows.
