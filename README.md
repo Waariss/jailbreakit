@@ -253,6 +253,19 @@ Guided mode handles this flow and tells the user when the second step is needed.
 - No device identifiers are uploaded by default
 - Downloads are performed only from configured upstream project URLs
 
+## Security & Third-Party Notices
+
+This repository does not bundle third-party jailbreak binaries by default. It only references upstream tools, local installations, and upstream release downloads.
+
+Third-party projects referenced or orchestrated by this tool have their own licenses, terms, and safety guidance:
+
+- `palera1n` — follow the official project documentation and license
+- `Dopamine` — follow the upstream release notes, license, and distribution terms
+- `plumesign` — follow the upstream project terms and license
+- The Apple Wiki — follow the site’s terms and attribution guidance
+
+When available, verify downloaded artifacts against upstream checksums or signatures before use.
+
 ## Data
 
 Compatibility and device metadata are versioned with the binary:
@@ -272,7 +285,7 @@ This project is a helper/orchestrator. It is not affiliated with Apple, `palera1
 
 Jailbreaking can cause data loss, boot issues, restore requirements, or device instability. We are not responsible for any data loss, device damage, bricked devices, account issues, failed jailbreak attempts, or any other outcome caused by using this tool or the underlying third-party tools. When using `palera1n`, Dopamine, `plumesign`, or any related tooling, the user accepts full responsibility for anything that happens to their device during the process.
 
-This tool does not bypass iCloud, Activation Lock, MDM, passcodes, or device ownership protections.
+This tool does not bypass iCloud, Activation Lock, MDM, passcodes, DRM/FairPlay, or device ownership protections.
 
 ## Credits
 
