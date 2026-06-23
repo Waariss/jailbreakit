@@ -23,6 +23,7 @@ iOS jailbreak setup for pentesting is repetitive and easy to get wrong:
 - download the matching Dopamine IPA instead of the wrong latest release
 - install a CLI signer and handle Apple ID login/2FA
 - remember the iPhone trust-profile step after sideloading
+- install local `.ipa` files directly onto an already-jailbroken iPhone over USB/SSH
 
 `jailbreakit` turns that into one guided flow:
 
@@ -88,18 +89,20 @@ Core tools:
 - Go 1.24+ to build from source
 - `palera1n` for checkm8/palera1n flows
 - `libimobiledevice` for `ideviceinfo` device detection
+- `iproxy`, `ssh`, and `scp` for jailbroken-device IPA installs
+- `ideviceinstaller` for host-side IPA install fallback
 - `curl` or network access for downloads
 
 macOS:
 
 ```sh
-brew install libimobiledevice curl
+brew install libimobiledevice libusbmuxd ideviceinstaller curl
 ```
 
 Linux package names vary by distribution. Debian/Ubuntu-style systems usually need:
 
 ```sh
-sudo apt install -y libimobiledevice-utils curl
+sudo apt install -y libimobiledevice-utils libusbmuxd-tools openssh-client ideviceinstaller curl
 ```
 
 Check your machine:
@@ -130,6 +133,7 @@ Common utility commands:
 ./jailbreakit doctor
 ./jailbreakit detect
 ./jailbreakit recommend --ios 15.8.8 --product iPhone8,1
+./jailbreakit install ./App.ipa
 ./jailbreakit version
 ```
 
@@ -220,6 +224,64 @@ Settings > General > VPN & Device Management
 ```
 
 Then open Dopamine and tap Jailbreak.
+
+## Install IPA on a Jailbroken iPhone
+
+For an already-jailbroken iPhone, `jailbreakit` can copy and install a local `.ipa` without Apple ID signing. The default path uses USB via `iproxy`, then `scp` and `ssh` into the device:
+
+```sh
+./jailbreakit install ./App.ipa
+```
+
+Default connection details:
+
+- host: USB tunnel to `127.0.0.1`
+- local SSH port: `2222`
+- device SSH port: `22`
+- SSH user: `root`
+- remote temp directory: `/tmp`
+- installer mode: auto-detects `appinst`, then `ipainstaller`, then falls back to host-side `ideviceinstaller`
+
+The iPhone must already be jailbroken and SSH must be running for the device-side install path. If neither `appinst` nor `ipainstaller` exists on the iPhone, `jailbreakit` falls back to `ideviceinstaller install <ipa>` on the host when available.
+
+To force host-side installation:
+
+```sh
+./jailbreakit install ./App.ipa --installer host
+```
+
+If your jailbreak uses a specific device-side installer command, override it:
+
+```sh
+./jailbreakit install ./App.ipa --installer ipainstaller
+```
+
+To install over Wi-Fi or another network route instead of USB:
+
+```sh
+./jailbreakit install ./App.ipa --host 192.168.1.23 --port 22
+```
+
+Useful flags:
+
+```sh
+./jailbreakit install ./App.ipa --user root --local-port 2223 --remote-dir /var/tmp
+./jailbreakit install ./App.ipa --dry-run
+```
+
+Host requirements:
+
+macOS:
+
+```sh
+brew install libusbmuxd libimobiledevice ideviceinstaller
+```
+
+Linux Debian/Ubuntu:
+
+```sh
+sudo apt install -y openssh-client libusbmuxd-tools ideviceinstaller
+```
 
 ## palera1n Notes
 

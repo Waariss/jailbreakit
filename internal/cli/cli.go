@@ -10,6 +10,7 @@ import (
 	"github.com/Waariss/jailbreakit/internal/deps"
 	"github.com/Waariss/jailbreakit/internal/device"
 	"github.com/Waariss/jailbreakit/internal/downloader"
+	"github.com/Waariss/jailbreakit/internal/installer"
 	"github.com/Waariss/jailbreakit/internal/recommender"
 	"github.com/Waariss/jailbreakit/internal/runner/palera1n"
 	"github.com/Waariss/jailbreakit/internal/sideload"
@@ -45,6 +46,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return runWorkflow(args[1:], stdout, stderr)
 	case "signer":
 		return signer(args[1:], stdin, stdout)
+	case "install":
+		return installIPA(args[1:], stdout, stderr)
 	case "download":
 		return download(args[1:], stdout)
 	case "troubleshoot":
@@ -66,6 +69,7 @@ Common:
   jailbreakit doctor
   jailbreakit detect
   jailbreakit recommend --ios 15.8.8 --product iPhone8,1
+  jailbreakit install ./App.ipa
   jailbreakit version
 
 Advanced:
@@ -92,6 +96,10 @@ Actions:
   jailbreakit run dopamine --version "2.5 Beta 3"
   jailbreakit run dopamine --url <ipa-url>
   jailbreakit run dopamine --sideload-cmd "plumesign sign --package {ipa} --apple-id --register-and-install"
+  jailbreakit install ./App.ipa
+  jailbreakit install ./App.ipa --host 192.168.1.23 --port 22
+  jailbreakit install ./App.ipa --installer host
+  jailbreakit install ./App.ipa --installer ipainstaller
 
 Utility:
   jailbreakit signer install
@@ -232,6 +240,22 @@ func doctorWithArgs(args []string, stdin io.Reader, w io.Writer) error {
 				fmt.Fprintf(w, "    install: %s\n", dep.InstallHint)
 			}
 		}
+	}
+
+	fmt.Fprintln(w)
+	missingInstallTools := installer.MissingTools()
+	if len(missingInstallTools) == 0 {
+		fmt.Fprintln(w, "[+] Jailbroken IPA install tools ssh, scp, iproxy")
+	} else {
+		fmt.Fprintf(w, "[-] Jailbroken IPA install tools missing: %s\n", strings.Join(missingInstallTools, ", "))
+		if hint := installer.InstallHint(); hint != "" {
+			fmt.Fprintf(w, "    install: %s\n", hint)
+		}
+	}
+	if missingHostTools := installer.MissingHostTools(); len(missingHostTools) == 0 {
+		fmt.Fprintln(w, "[+] Host IPA install fallback ideviceinstaller")
+	} else {
+		fmt.Fprintf(w, "[-] Host IPA install fallback missing: %s\n", strings.Join(missingHostTools, ", "))
 	}
 
 	fmt.Fprintln(w)
@@ -471,6 +495,44 @@ func download(args []string, w io.Writer) error {
 	}
 	fmt.Fprintf(w, "[+] saved %s\n", path)
 	return nil
+}
+
+func installIPA(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("install", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	host := fs.String("host", "", "jailbroken iPhone SSH host; empty uses USB iproxy")
+	user := fs.String("user", "root", "SSH user")
+	port := fs.Int("port", 22, "SSH port when --host is used")
+	localPort := fs.Int("local-port", 2222, "local iproxy port for USB installs")
+	devicePort := fs.Int("device-port", 22, "iPhone SSH port for USB installs")
+	remoteDir := fs.String("remote-dir", "/tmp", "remote directory for temporary IPA copy")
+	installerName := fs.String("installer", "auto", "installer mode: auto, host, ideviceinstaller, appinst, or ipainstaller")
+	dryRun := fs.Bool("dry-run", false, "print commands without executing")
+	if err := fs.Parse(normalizeInstallArgs(args)); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: jailbreakit install <app.ipa>")
+	}
+	return installer.Run(installer.Options{
+		IPAPath:    fs.Arg(0),
+		Host:       *host,
+		User:       *user,
+		Port:       *port,
+		LocalPort:  *localPort,
+		DevicePort: *devicePort,
+		RemoteDir:  *remoteDir,
+		Installer:  *installerName,
+		DryRun:     *dryRun,
+	}, stdout, stderr)
+}
+
+func normalizeInstallArgs(args []string) []string {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		return args
+	}
+	normalized := append([]string{}, args[1:]...)
+	return append(normalized, args[0])
 }
 
 func parseTroubleshoot(args []string, w io.Writer) error {
