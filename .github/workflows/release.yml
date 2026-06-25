@@ -53,7 +53,7 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           go build \
-            -ldflags "-s -w -X github.com/Waariss/jailbreakit/internal/version.Version=${GITHUB_REF_NAME} -X github.com/Waariss/jailbreakit/internal/version.Author=Mittcheng -X github.com/Waariss/jailbreakit/internal/version.Commit=${GITHUB_SHA} -X github.com/Waariss/jailbreakit/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -ldflags "-s -w -X github.com/Waariss/jailbreakit/internal/version.Version=${GITHUB_REF_NAME} -X github.com/Waariss/jailbreakit/internal/version.Author=Waariss -X github.com/Waariss/jailbreakit/internal/version.Commit=${GITHUB_SHA} -X github.com/Waariss/jailbreakit/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o dist/${{ matrix.name }} ./cmd/jailbreakit
       - uses: actions/upload-artifact@v4
         with:

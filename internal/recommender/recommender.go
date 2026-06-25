@@ -38,13 +38,17 @@ func Recommend(info device.Info) Result {
 					})
 				}
 			case "dopamine":
-				result.Options = append(result.Options, Option{
-					Name:    "Dopamine",
-					Version: entry.Version,
-					Mode:    "rootless",
-					Type:    "semi-untethered",
-					Reason:  "Matched iOS compatibility matrix from " + source + ".",
-				})
+				if dopamineSupported(info) {
+					result.Options = append(result.Options, Option{
+						Name:    "Dopamine",
+						Version: entry.Version,
+						Mode:    "rootless",
+						Type:    "semi-untethered",
+						Reason:  "Matched iOS compatibility matrix from " + source + ".",
+					})
+				} else {
+					result.Warnings = append(result.Warnings, "Omitted Dopamine because this device/iOS combination is not supported by jailbreakit's conservative local rules. Verify upstream compatibility before proceeding.")
+				}
 			case "chimera", "unc0ver", "checkra1n", "odyssey", "taurine":
 				result.Options = append(result.Options, Option{
 					Name:    entry.Tool,
@@ -102,6 +106,14 @@ func checkm8Supported(chip string) bool {
 	default:
 		return false
 	}
+}
+
+func dopamineSupported(info device.Info) bool {
+	major := majorVersion(info.OSVersion)
+	if major >= 16 && checkm8Supported(info.Chip) {
+		return false
+	}
+	return true
 }
 
 func majorVersion(version string) int {

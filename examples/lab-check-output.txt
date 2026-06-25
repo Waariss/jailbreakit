@@ -1,0 +1,32 @@
+[+] Host dependency ideviceinfo: /opt/homebrew/bin/ideviceinfo
+[+] Host dependency iproxy: /opt/homebrew/bin/iproxy
+[+] Host dependency ssh: /usr/bin/ssh
+[+] Host dependency scp: /usr/bin/scp
+[+] Host dependency ideviceinstaller: /opt/homebrew/bin/ideviceinstaller
+[+] Host dependency curl: /usr/bin/curl
+[!] Host dependency palera1n: missing
+
+[+] Connected iOS device detected
+    ProductType: iPhone10,6
+    Model:       iPhone X
+    Chip:        A11
+    iOS:         16.7.10
+
+[*] IPA install readiness
+[+] IPA install ssh: /usr/bin/ssh
+[+] IPA install scp: /usr/bin/scp
+[+] IPA install iproxy: /opt/homebrew/bin/iproxy
+[+] IPA install ideviceinstaller: /opt/homebrew/bin/ideviceinstaller
+[!] Device-side installer appinst: missing
+[!] Device-side installer ipainstaller: missing
+
+[*] Frida / Objection readiness
+[+] Frida CLI: /usr/local/bin/frida (17.0.0)
+[+] Frida process lister: /usr/local/bin/frida-ps (17.0.0)
+[+] Objection: /usr/local/bin/objection (1.11.0)
+    next: Install host tools if missing: python3 -m pip install frida-tools objection
+    next: List USB-connected processes: frida-ps -U
+    next: With a jailbroken device and SSH, ensure frida-server is installed and running on the device.
+
+[!] SSH check skipped: pass --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root after starting iproxy
+[*] Suggested tunnel: iproxy 2222 22

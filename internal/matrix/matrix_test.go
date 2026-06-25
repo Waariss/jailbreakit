@@ -15,6 +15,16 @@ func TestFallbackIOS15(t *testing.T) {
 	}
 }
 
+func TestFallbackIOS16710Palera1nOnly(t *testing.T) {
+	entries := fallback("16.7.10")
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d: %#v", len(entries), entries)
+	}
+	if entries[0].Tool != "palera1n" {
+		t.Fatalf("expected palera1n only, got %#v", entries)
+	}
+}
+
 func TestFallbackIsExact(t *testing.T) {
 	if entries := fallback("17.0"); len(entries) != 0 {
 		t.Fatalf("expected no fallback for 17.0, got %#v", entries)

@@ -72,7 +72,7 @@ func ParsePalera1nLog(log string) []Finding {
 		findings = append(findings, Finding{
 			Title: "PongoOS booted the kernel",
 			Suggestions: []string{
-				"This usually means the exploit flow progressed successfully.",
+				"This usually means the device boot/jailbreak flow progressed successfully.",
 				"If rootful BindFS was just created, wait for recovery mode and run the rootful boot step.",
 			},
 		})

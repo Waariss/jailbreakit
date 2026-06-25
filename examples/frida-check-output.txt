@@ -1,0 +1,6 @@
+[+] Frida CLI: /usr/local/bin/frida (17.0.0)
+[+] Frida process lister: /usr/local/bin/frida-ps (17.0.0)
+[+] Objection: /usr/local/bin/objection (1.11.0)
+[*] Install host tools if missing: python3 -m pip install frida-tools objection
+[*] List USB-connected processes: frida-ps -U
+[*] With a jailbroken device and SSH, ensure frida-server is installed and running on the device.

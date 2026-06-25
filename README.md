@@ -8,13 +8,21 @@
   <img src="media/jailbreakit.png" width="45%" alt="jailbreakit logo">
 </div>
 
-`jailbreakit` is a CLI helper for authorized iOS pentesting and security research only.
+`jailbreakit` is an iOS Pentest Lab Setup Helper for authorized iOS security testing and research only.
 
-It detects a connected iPhone, checks jailbreak compatibility, recommends a route, and guides the user through `palera1n` or Dopamine setup. The goal is not to create a new jailbreak. The goal is to make the repetitive setup work easier for pentesters and security researchers working on devices they are allowed to test.
+It detects a connected iPhone, checks jailbreak compatibility, recommends a route, validates host/device readiness for dynamic analysis, and helps install local IPA files in an authorized lab. The goal is not to create or distribute a new jailbreak. The goal is to make repetitive iOS pentest lab setup easier for testers working on devices and applications they are allowed to assess.
+
+Project documents:
+
+- [Security policy](SECURITY.md)
+- [MASTG-style positioning](docs/MASTG-POSITIONING.md)
+- [v1.3.0 release notes](docs/RELEASE-v1.3.0.md)
+- [Example outputs](examples/)
+- [OWASP MASTG issue draft](docs/OWASP-MASTG-ISSUE-DRAFT.md)
 
 ## Why
 
-iOS jailbreak setup for pentesting is repetitive and easy to get wrong:
+iOS pentest lab setup is repetitive and easy to get wrong:
 
 - identify the device model, chip, and iOS version
 - check which jailbreak supports that version
@@ -24,6 +32,9 @@ iOS jailbreak setup for pentesting is repetitive and easy to get wrong:
 - install a CLI signer and handle Apple ID login/2FA
 - remember the iPhone trust-profile step after sideloading
 - install local `.ipa` files directly onto an already-jailbroken iPhone over USB/SSH
+- verify host dependencies for iOS dynamic analysis
+- check Frida / Objection readiness without downloading device-side binaries
+- generate lab readiness evidence for working notes
 
 `jailbreakit` turns that into one guided flow:
 
@@ -38,7 +49,7 @@ Current target platforms:
 - macOS
 - Linux
 
-Windows is not supported yet. The project is currently iPhone-first; iPad, iPod, Apple TV, and T2 metadata exist as initial compatibility data, but the main tested workflow is iPhone jailbreak setup for authorized security testing.
+Windows is not supported yet. The project is currently iPhone-first; iPad, iPod, Apple TV, and T2 metadata exist as initial compatibility data, but the main tested workflow is iPhone pentest lab setup for authorized security testing.
 
 ## Install
 
@@ -91,6 +102,7 @@ Core tools:
 - `libimobiledevice` for `ideviceinfo` device detection
 - `iproxy`, `ssh`, and `scp` for jailbroken-device IPA installs
 - `ideviceinstaller` for host-side IPA install fallback
+- `frida-tools` and `objection` for runtime testing readiness checks
 - `curl` or network access for downloads
 
 macOS:
@@ -133,6 +145,9 @@ Common utility commands:
 ./jailbreakit doctor
 ./jailbreakit detect
 ./jailbreakit recommend --ios 15.8.8 --product iPhone8,1
+./jailbreakit lab-check
+./jailbreakit frida-check
+./jailbreakit evidence --format markdown
 ./jailbreakit install ./App.ipa
 ./jailbreakit version
 ```
@@ -157,7 +172,54 @@ Check formatting:
 gofmt -w cmd internal
 ```
 
-GitHub Actions runs `gofmt` and `go test ./...` on pushes and pull requests. Tagged releases build macOS and Linux binaries.
+GitHub Actions runs `gofmt` and `go test ./...` on pushes and pull requests. Tagged releases build macOS and Linux binaries. Pushes to `main` can also auto-create the missing version tag and GitHub Release from `internal/version/version.go`.
+
+## MASTG-Style Use Cases
+
+`jailbreakit` supports authorized iOS lab workflows aligned with mobile application security testing preparation:
+
+- preparing an iOS device for dynamic analysis
+- checking host dependencies for iOS testing
+- validating SSH / iproxy / IPA install readiness
+- preparing for Frida / Objection runtime testing
+- generating lab readiness evidence for pentest notes
+- supporting jailbreak-detection validation workflows on authorized devices
+
+`jailbreakit` does not create a new jailbreak, exploit third-party devices, bypass app DRM, provide decrypted IPAs, store Apple ID credentials, or fetch Frida server binaries automatically.
+
+## Lab Readiness
+
+Run a practical readiness check for an authorized iOS dynamic analysis lab:
+
+```sh
+./jailbreakit lab-check
+```
+
+If you already started an SSH tunnel, optionally verify SSH with a harmless command:
+
+```sh
+iproxy 2222 22
+./jailbreakit lab-check --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root
+```
+
+Check host Frida / Objection readiness:
+
+```sh
+./jailbreakit frida-check
+```
+
+Generate evidence for working notes:
+
+```sh
+./jailbreakit evidence --format markdown
+./jailbreakit evidence --format json --out lab-evidence.json
+```
+
+The evidence report includes host OS/architecture, available host dependencies, connected device information when available, recommended testing route when device data is available, IPA install readiness, Frida / Objection readiness, and the safety note:
+
+```text
+Generated for authorized iOS security testing only.
+```
 
 ## What It Does
 
@@ -349,6 +411,14 @@ Jailbreaking can cause data loss, boot issues, restore requirements, or device i
 
 This tool does not bypass, and must not be used to attempt to bypass, iCloud, Activation Lock, MDM, passcodes, DRM/FairPlay, or device ownership protections.
 
+Safety boundaries:
+
+- `jailbreakit` does not create a new jailbreak.
+- `jailbreakit` does not exploit third-party devices.
+- `jailbreakit` does not bypass app DRM.
+- `jailbreakit` does not provide decrypted IPAs.
+- Users must only test devices and applications they are authorized to assess.
+
 ## Credits
 
 This project orchestrates and references work from:
@@ -362,4 +432,6 @@ Respect the licenses, documentation, and safety guidance of the upstream project
 
 ## Status
 
-Early MVP. Expect changes to commands, compatibility data, and sideloading flow as the project matures.
+Initial public release for iOS pentest lab readiness. `jailbreakit` v1.3.0 focuses on authorized iOS pentest environment preparation and MASTG-style dynamic analysis workflows. Expect incremental updates to commands, compatibility data, and lab-readiness checks as the project matures.
+
+`jailbreakit` is an independent project and is not affiliated with, endorsed by, or officially maintained by OWASP.

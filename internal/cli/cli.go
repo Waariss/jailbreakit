@@ -6,11 +6,14 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Waariss/jailbreakit/internal/deps"
 	"github.com/Waariss/jailbreakit/internal/device"
 	"github.com/Waariss/jailbreakit/internal/downloader"
+	"github.com/Waariss/jailbreakit/internal/evidence"
 	"github.com/Waariss/jailbreakit/internal/installer"
+	"github.com/Waariss/jailbreakit/internal/readiness"
 	"github.com/Waariss/jailbreakit/internal/recommender"
 	"github.com/Waariss/jailbreakit/internal/runner/palera1n"
 	"github.com/Waariss/jailbreakit/internal/sideload"
@@ -42,6 +45,12 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return detect(stdout)
 	case "recommend":
 		return recommend(args[1:], stdout)
+	case "lab-check":
+		return labCheck(args[1:], stdout)
+	case "frida-check":
+		return fridaCheck(args[1:], stdout)
+	case "evidence":
+		return evidenceReport(args[1:], stdout)
 	case "run":
 		return runWorkflow(args[1:], stdout, stderr)
 	case "signer":
@@ -60,7 +69,11 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprintln(w, `jailbreakit - iOS jailbreak assistant
+	fmt.Fprintln(w, `jailbreakit - iOS pentest lab setup helper
+
+Authorized iOS testing helper for pentest lab setup, dynamic analysis readiness,
+and device preparation. jailbreakit orchestrates local tools and upstream
+workflows; it does not create, distribute, or provide jailbreak exploit code.
 
 Usage:
   jailbreakit
@@ -69,6 +82,9 @@ Common:
   jailbreakit doctor
   jailbreakit detect
   jailbreakit recommend --ios 15.8.8 --product iPhone8,1
+  jailbreakit lab-check
+  jailbreakit frida-check
+  jailbreakit evidence --format markdown
   jailbreakit install ./App.ipa
   jailbreakit version
 
@@ -96,12 +112,12 @@ Actions:
   jailbreakit run dopamine --version "2.5 Beta 3"
   jailbreakit run dopamine --url <ipa-url>
   jailbreakit run dopamine --sideload-cmd "plumesign sign --package {ipa} --apple-id --register-and-install"
-  jailbreakit install ./App.ipa
-  jailbreakit install ./App.ipa --host 192.168.1.23 --port 22
-  jailbreakit install ./App.ipa --installer host
-  jailbreakit install ./App.ipa --installer ipainstaller
 
 Utility:
+  jailbreakit lab-check --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root
+  jailbreakit frida-check
+  jailbreakit evidence --format markdown
+  jailbreakit evidence --format json --out lab-evidence.json
   jailbreakit signer install
   jailbreakit signer install --platform macos
   jailbreakit download dopamine --out ./downloads
@@ -322,6 +338,82 @@ func recommend(args []string, w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func labCheck(args []string, w io.Writer) error {
+	options, err := parseLabCheckArgs(args)
+	if err != nil {
+		return err
+	}
+	report := readiness.DefaultChecker().Lab(options)
+	readiness.PrintLab(w, report)
+	return nil
+}
+
+func parseLabCheckArgs(args []string) (readiness.SSHOptions, error) {
+	fs := flag.NewFlagSet("lab-check", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	host := fs.String("ssh-host", "", "SSH host to check; omit to skip SSH credential checks")
+	port := fs.Int("ssh-port", 2222, "SSH port for optional SSH check")
+	user := fs.String("ssh-user", "root", "SSH user for optional SSH check")
+	if err := fs.Parse(args); err != nil {
+		return readiness.SSHOptions{}, err
+	}
+	if fs.NArg() != 0 {
+		return readiness.SSHOptions{}, fmt.Errorf("usage: jailbreakit lab-check [--ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root]")
+	}
+	if *port < 1 || *port > 65535 {
+		return readiness.SSHOptions{}, fmt.Errorf("invalid SSH port %d", *port)
+	}
+	return readiness.SSHOptions{Host: *host, Port: *port, User: *user}, nil
+}
+
+func fridaCheck(args []string, w io.Writer) error {
+	fs := flag.NewFlagSet("frida-check", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("usage: jailbreakit frida-check")
+	}
+	readiness.PrintFrida(w, readiness.DefaultChecker().FridaReadiness())
+	return nil
+}
+
+func evidenceReport(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("evidence", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	format := fs.String("format", "markdown", "report format: markdown or json")
+	out := fs.String("out", "", "write report to path instead of stdout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("usage: jailbreakit evidence --format markdown|json [--out path]")
+	}
+	report := evidence.Build(readiness.DefaultChecker(), readiness.SSHOptions{}, time.Now())
+	var rendered []byte
+	var err error
+	switch strings.ToLower(strings.TrimSpace(*format)) {
+	case "markdown", "md":
+		rendered = evidence.Markdown(report)
+	case "json":
+		rendered, err = evidence.JSON(report)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported evidence format %q", *format)
+	}
+	if strings.TrimSpace(*out) != "" {
+		return os.WriteFile(*out, rendered, 0o644)
+	}
+	_, err = stdout.Write(rendered)
+	if err == nil && len(rendered) > 0 && rendered[len(rendered)-1] != '\n' {
+		_, err = fmt.Fprintln(stdout)
+	}
+	return err
 }
 
 func runWorkflow(args []string, stdout, stderr io.Writer) error {

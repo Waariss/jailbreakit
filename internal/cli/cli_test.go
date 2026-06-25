@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Waariss/jailbreakit/internal/device"
 )
 
 func TestInstallAcceptsFlagsAfterIPA(t *testing.T) {
@@ -23,5 +25,51 @@ func TestInstallAcceptsFlagsAfterIPA(t *testing.T) {
 	output := stdout.String()
 	if !strings.Contains(output, "scp") || !strings.Contains(output, "-P 44") || !strings.Contains(output, "ipainstaller") {
 		t.Fatalf("unexpected dry-run output:\n%s", output)
+	}
+}
+
+func TestPrintDeviceDoesNotPrefixBackslash(t *testing.T) {
+	var stdout bytes.Buffer
+	printDevice(&stdout, device.Info{ProductType: "iPhone10,5", OSVersion: "16.7.10"})
+	output := stdout.String()
+	if !strings.HasPrefix(output, "ProductType:") {
+		t.Fatalf("expected ProductType prefix, got %q", output)
+	}
+	if strings.Contains(output, `\ProductType`) {
+		t.Fatalf("unexpected backslash in output: %q", output)
+	}
+}
+
+func TestParseLabCheckFlags(t *testing.T) {
+	got, err := parseLabCheckArgs([]string{"--ssh-host", "127.0.0.1", "--ssh-port", "2222", "--ssh-user", "root"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Host != "127.0.0.1" || got.Port != 2222 || got.User != "root" {
+		t.Fatalf("unexpected SSH options: %#v", got)
+	}
+}
+
+func TestParseLabCheckRejectsInvalidPort(t *testing.T) {
+	_, err := parseLabCheckArgs([]string{"--ssh-host", "127.0.0.1", "--ssh-port", "70000"})
+	if err == nil {
+		t.Fatal("expected invalid port error")
+	}
+}
+
+func TestDispatchFridaCheck(t *testing.T) {
+	var stdout bytes.Buffer
+	if err := run([]string{"frida-check"}, strings.NewReader(""), &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "frida") || !strings.Contains(stdout.String(), "python3 -m pip install frida-tools objection") {
+		t.Fatalf("unexpected frida-check output:\n%s", stdout.String())
+	}
+}
+
+func TestEvidenceRejectsUnknownFormat(t *testing.T) {
+	err := evidenceReport([]string{"--format", "xml"}, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported evidence format") {
+		t.Fatalf("expected unsupported format error, got %v", err)
 	}
 }

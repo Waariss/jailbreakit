@@ -38,8 +38,7 @@
     {
       "ios": "16.7.10",
       "tools": [
-        {"tool": "palera1n", "version": "2.2.1", "status": "Semi-Tethered"},
-        {"tool": "Dopamine", "version": "2.5 Beta 3", "status": "Yes"}
+        {"tool": "palera1n", "version": "2.2.1", "status": "Semi-Tethered"}
       ]
     }
   ]

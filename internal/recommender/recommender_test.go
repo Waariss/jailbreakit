@@ -24,6 +24,26 @@ func TestRecommendCheckm8AndDopamine(t *testing.T) {
 	}
 }
 
+func TestRecommendA11IOS16OmitsDopamine(t *testing.T) {
+	result := Recommend(device.Info{
+		ProductType: "iPhone10,5",
+		Chip:        "A11",
+		OSVersion:   "16.7.10",
+	})
+
+	if len(result.Options) != 1 {
+		t.Fatalf("expected only palera1n, got %#v", result.Options)
+	}
+	if result.Options[0].Name != "palera1n" {
+		t.Fatalf("expected palera1n, got %#v", result.Options[0])
+	}
+	for _, option := range result.Options {
+		if option.Name == "Dopamine" {
+			t.Fatalf("did not expect Dopamine for A11/iOS 16.7.10: %#v", result.Options)
+		}
+	}
+}
+
 func TestRecommendUnknownWarns(t *testing.T) {
 	result := Recommend(device.Info{ProductType: "iPhone99,9", OSVersion: "18.0"})
 	if len(result.Options) != 0 {
