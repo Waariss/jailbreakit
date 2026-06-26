@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Waariss/jailbreakit/internal/certprofile"
 	"github.com/Waariss/jailbreakit/internal/deps"
 	"github.com/Waariss/jailbreakit/internal/device"
 	"github.com/Waariss/jailbreakit/internal/downloader"
@@ -51,6 +52,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return fridaCheck(args[1:], stdout)
 	case "evidence":
 		return evidenceReport(args[1:], stdout)
+	case "burp-ca":
+		return burpCA(args[1:], stdout, stderr)
 	case "run":
 		return runWorkflow(args[1:], stdout, stderr)
 	case "signer":
@@ -85,6 +88,7 @@ Common:
   jailbreakit lab-check
   jailbreakit frida-check
   jailbreakit evidence --format markdown
+  jailbreakit burp-ca --cert cacert.der --install
   jailbreakit install ./App.ipa
   jailbreakit version
 
@@ -118,6 +122,7 @@ Utility:
   jailbreakit frida-check
   jailbreakit evidence --format markdown
   jailbreakit evidence --format json --out lab-evidence.json
+  jailbreakit burp-ca --cert cacert.der --out burp-ca.mobileconfig
   jailbreakit signer install
   jailbreakit signer install --platform macos
   jailbreakit download dopamine --out ./downloads
@@ -414,6 +419,46 @@ func evidenceReport(args []string, stdout io.Writer) error {
 		_, err = fmt.Fprintln(stdout)
 	}
 	return err
+}
+
+func burpCA(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("burp-ca", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	cert := fs.String("cert", "", "Burp CA certificate path, e.g. cacert.der or cacert.pem")
+	out := fs.String("out", "burp-ca.mobileconfig", "output mobileconfig path")
+	name := fs.String("name", "Burp Suite CA", "certificate display name in the generated profile")
+	install := fs.Bool("install", false, "install the generated profile with ideviceprofile, pymobiledevice3, or cfgutil")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 || strings.TrimSpace(*cert) == "" {
+		return fmt.Errorf("usage: jailbreakit burp-ca --cert cacert.der [--out burp-ca.mobileconfig] [--install]")
+	}
+	path, err := certprofile.Write(certprofile.Options{
+		CertPath: *cert,
+		OutPath:  *out,
+		Name:     *name,
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "[+] wrote %s\n", path)
+	if *install {
+		if err := certprofile.Install(path, stdout, stderr); err != nil {
+			if certprofile.IsMissingInstaller(err) {
+				certprofile.InstallerHints(stdout, path)
+				certprofile.TrustInstructions(stdout)
+				return nil
+			}
+			if certprofile.IsInstallerRunError(err) {
+				certprofile.InstallerFailureHints(stdout)
+			}
+			return fmt.Errorf("install Burp CA profile failed: %w", err)
+		}
+		fmt.Fprintln(stdout, "[+] profile install command completed")
+	}
+	certprofile.TrustInstructions(stdout)
+	return nil
 }
 
 func runWorkflow(args []string, stdout, stderr io.Writer) error {

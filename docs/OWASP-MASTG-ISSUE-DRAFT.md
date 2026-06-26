@@ -22,6 +22,7 @@ It helps testers verify local dependencies, connected-device metadata, SSH/iprox
 - Lab readiness checks with `jailbreakit lab-check`.
 - Frida and Objection readiness checks with `jailbreakit frida-check`.
 - Evidence report generation with `jailbreakit evidence`.
+- Burp CA profile generation and optional installation with `jailbreakit burp-ca`.
 - Authorized local IPA installation with `jailbreakit install`.
 
 ## Safety Boundaries
@@ -33,12 +34,13 @@ It helps testers verify local dependencies, connected-device metadata, SSH/iprox
 - Bypass app DRM or FairPlay.
 - Provide decrypted IPAs.
 - Store Apple ID credentials.
+- Auto-enable iOS certificate trust.
 - Download or install Frida server binaries automatically.
 - Attempt iCloud, Activation Lock, MDM, or passcode bypass.
 
 ## Maintenance Status
 
-The project is maintained as a Go CLI with unit tests and GitHub Actions for formatting, tests, and release builds. v1.3.0 adds lab readiness checks and evidence generation.
+The project is maintained as a Go CLI with unit tests and GitHub Actions for formatting, tests, and release builds. v1.3.1 is the current public lab-readiness release.
 
 ## Commands and Examples
 
@@ -48,6 +50,7 @@ jailbreakit lab-check --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root
 jailbreakit frida-check
 jailbreakit evidence --format markdown
 jailbreakit evidence --format json --out lab-evidence.json
+jailbreakit burp-ca --cert cacert.der --install
 jailbreakit install ./App.ipa
 ```
 

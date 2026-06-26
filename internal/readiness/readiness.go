@@ -138,6 +138,9 @@ func (c Checker) HostDependencies() []ToolCheck {
 		c.Tool("Host dependency ssh", "ssh", false),
 		c.Tool("Host dependency scp", "scp", false),
 		c.Tool("Host dependency ideviceinstaller", "ideviceinstaller", false),
+		c.Tool("Host dependency ideviceprofile", "ideviceprofile", true),
+		c.Tool("Host dependency pymobiledevice3", "pymobiledevice3", true),
+		c.Tool("Host dependency cfgutil", "cfgutil", true),
 		c.Tool("Host dependency curl", "curl", false),
 		c.Tool("Host dependency palera1n", "palera1n", true),
 	}

@@ -1,6 +1,6 @@
 {
   "tool": "jailbreakit",
-  "version": "v1.3.0",
+  "version": "v1.3.1",
   "timestamp": "2026-06-25T12:00:00Z",
   "host": {
     "os": "darwin",
@@ -24,6 +24,44 @@
       "binary": "ssh",
       "available": true,
       "path": "/usr/bin/ssh"
+    },
+    {
+      "name": "Host dependency scp",
+      "binary": "scp",
+      "available": true,
+      "path": "/usr/bin/scp"
+    },
+    {
+      "name": "Host dependency ideviceinstaller",
+      "binary": "ideviceinstaller",
+      "available": true,
+      "path": "/opt/homebrew/bin/ideviceinstaller"
+    },
+    {
+      "name": "Host dependency ideviceprofile",
+      "binary": "ideviceprofile",
+      "available": true,
+      "path": "/opt/homebrew/bin/ideviceprofile"
+    },
+    {
+      "name": "Host dependency pymobiledevice3",
+      "binary": "pymobiledevice3",
+      "available": false,
+      "error": "missing",
+      "optional": true
+    },
+    {
+      "name": "Host dependency cfgutil",
+      "binary": "cfgutil",
+      "available": false,
+      "error": "missing",
+      "optional": true
+    },
+    {
+      "name": "Host dependency curl",
+      "binary": "curl",
+      "available": true,
+      "path": "/usr/bin/curl"
     },
     {
       "name": "Host dependency palera1n",

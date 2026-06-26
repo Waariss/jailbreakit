@@ -73,3 +73,48 @@ func TestEvidenceRejectsUnknownFormat(t *testing.T) {
 		t.Fatalf("expected unsupported format error, got %v", err)
 	}
 }
+
+func TestBurpCAGeneratesProfile(t *testing.T) {
+	dir := t.TempDir()
+	cert := filepath.Join(dir, "cacert.der")
+	out := filepath.Join(dir, "burp.mobileconfig")
+	if err := os.WriteFile(cert, []byte{1, 2, 3}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	if err := burpCA([]string{"--cert", cert, "--out", out}, &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "Certificate Trust Settings") {
+		t.Fatalf("expected trust instructions, got:\n%s", stdout.String())
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBurpCAInstallWithoutInstallerPrintsHints(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	cert := filepath.Join(dir, "cacert.der")
+	out := filepath.Join(dir, "burp.mobileconfig")
+	if err := os.WriteFile(cert, []byte{1, 2, 3}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	if err := burpCA([]string{"--cert", cert, "--out", out, "--install"}, &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	output := stdout.String()
+	for _, want := range []string{
+		"no supported iOS profile installer",
+		"python3 -m pip install pymobiledevice3",
+		"Certificate Trust Settings",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected %q in output:\n%s", want, output)
+		}
+	}
+}

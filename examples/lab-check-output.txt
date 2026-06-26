@@ -3,6 +3,9 @@
 [+] Host dependency ssh: /usr/bin/ssh
 [+] Host dependency scp: /usr/bin/scp
 [+] Host dependency ideviceinstaller: /opt/homebrew/bin/ideviceinstaller
+[+] Host dependency ideviceprofile: /opt/homebrew/bin/ideviceprofile
+[!] Host dependency pymobiledevice3: missing
+[!] Host dependency cfgutil: missing
 [+] Host dependency curl: /usr/bin/curl
 [!] Host dependency palera1n: missing
 

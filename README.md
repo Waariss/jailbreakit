@@ -16,7 +16,7 @@ Project documents:
 
 - [Security policy](SECURITY.md)
 - [MASTG-style positioning](docs/MASTG-POSITIONING.md)
-- [v1.3.0 release notes](docs/RELEASE-v1.3.0.md)
+- [v1.3.1 release notes](docs/RELEASE-v1.3.1.md)
 - [Example outputs](examples/)
 - [OWASP MASTG issue draft](docs/OWASP-MASTG-ISSUE-DRAFT.md)
 
@@ -102,6 +102,7 @@ Core tools:
 - `libimobiledevice` for `ideviceinfo` device detection
 - `iproxy`, `ssh`, and `scp` for jailbroken-device IPA installs
 - `ideviceinstaller` for host-side IPA install fallback
+- `ideviceprofile`, `pymobiledevice3`, or macOS `cfgutil` for Burp CA profile installation
 - `frida-tools` and `objection` for runtime testing readiness checks
 - `curl` or network access for downloads
 
@@ -148,6 +149,7 @@ Common utility commands:
 ./jailbreakit lab-check
 ./jailbreakit frida-check
 ./jailbreakit evidence --format markdown
+./jailbreakit burp-ca --cert cacert.der --install
 ./jailbreakit install ./App.ipa
 ./jailbreakit version
 ```
@@ -182,6 +184,7 @@ GitHub Actions runs `gofmt` and `go test ./...` on pushes and pull requests. Tag
 - checking host dependencies for iOS testing
 - validating SSH / iproxy / IPA install readiness
 - preparing for Frida / Objection runtime testing
+- installing a Burp CA profile while leaving full certificate trust as an explicit user action
 - generating lab readiness evidence for pentest notes
 - supporting jailbreak-detection validation workflows on authorized devices
 
@@ -220,6 +223,33 @@ The evidence report includes host OS/architecture, available host dependencies, 
 ```text
 Generated for authorized iOS security testing only.
 ```
+
+## Burp CA Profile
+
+`jailbreakit` can generate a configuration profile from a local Burp CA certificate and optionally install that profile with `ideviceprofile`, `pymobiledevice3`, or macOS `cfgutil`:
+
+```sh
+./jailbreakit burp-ca --cert cacert.der --out burp-ca.mobileconfig
+./jailbreakit burp-ca --cert cacert.der --install
+```
+
+This does not bypass iOS certificate trust. After installing the profile, make sure full trust is enabled on the iPhone:
+
+```text
+Did you enable full trust for the certificate?
+Go to: Settings > General > About > Certificate Trust Settings
+Then enable the toggle for: Burp Suite CA
+```
+
+Download or export the Burp CA certificate from your own Burp instance, for example through Burp's browser certificate export flow. `jailbreakit` does not fetch certificates from the network automatically.
+
+If `--install` reports that no supported profile installer is available, install one of these host tools and retry:
+
+```sh
+python3 -m pip install pymobiledevice3
+```
+
+On macOS, Apple Configurator also provides `cfgutil`. Some Linux distributions may package `ideviceprofile`, but availability varies.
 
 ## What It Does
 
@@ -432,6 +462,6 @@ Respect the licenses, documentation, and safety guidance of the upstream project
 
 ## Status
 
-Initial public release for iOS pentest lab readiness. `jailbreakit` v1.3.0 focuses on authorized iOS pentest environment preparation and MASTG-style dynamic analysis workflows. Expect incremental updates to commands, compatibility data, and lab-readiness checks as the project matures.
+Current public release for iOS pentest lab readiness. `jailbreakit` v1.3.1 focuses on authorized iOS pentest environment preparation and MASTG-style dynamic analysis workflows. Expect incremental updates to commands, compatibility data, and lab-readiness checks as the project matures.
 
 `jailbreakit` is an independent project and is not affiliated with, endorsed by, or officially maintained by OWASP.

@@ -14,6 +14,7 @@
 - Lab readiness checks through `jailbreakit lab-check`.
 - Frida and Objection readiness checks through `jailbreakit frida-check`.
 - Evidence report generation through `jailbreakit evidence`.
+- Burp CA profile generation and installation through `jailbreakit burp-ca`.
 - Authorized local IPA installation through `jailbreakit install`.
 
 ## What jailbreakit Is Not
@@ -35,6 +36,7 @@
 - Checking libimobiledevice, iproxy, SSH, scp, ideviceinstaller, Frida, and Objection readiness.
 - Validating whether SSH over USB can be checked safely after the tester starts `iproxy`.
 - Preparing for runtime testing with Frida and Objection.
+- Generating and installing a Burp CA profile while keeping full trust as an explicit user action.
 - Installing authorized lab IPA files.
 - Generating repeatable readiness evidence for working notes.
 - Supporting jailbreak-detection validation workflows on authorized lab devices.
@@ -67,6 +69,13 @@ jailbreakit evidence --format markdown
 jailbreakit evidence --format json --out lab-evidence.json
 ```
 
+Generate and optionally install a Burp CA profile:
+
+```sh
+jailbreakit burp-ca --cert cacert.der --out burp-ca.mobileconfig
+jailbreakit burp-ca --cert cacert.der --install
+```
+
 Install an authorized lab IPA:
 
 ```sh
@@ -75,7 +84,7 @@ jailbreakit install ./App.ipa
 
 ## Safety Boundaries
 
-`jailbreakit` does not create a new jailbreak, distribute jailbreak binaries, bypass app DRM, provide decrypted IPAs, store Apple ID credentials, or fetch Frida server binaries automatically.
+`jailbreakit` does not create a new jailbreak, distribute jailbreak binaries, bypass app DRM, provide decrypted IPAs, store Apple ID credentials, fetch Frida server binaries automatically, or auto-enable iOS certificate trust.
 
 Users must only test devices and applications they are authorized to assess.
 
