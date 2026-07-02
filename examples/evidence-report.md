@@ -1,7 +1,7 @@
 # jailbreakit Lab Readiness Evidence
 
 - Tool: jailbreakit
-- Version: v1.3.1
+- Version: v1.3.2
 - Timestamp: 2026-06-25T12:00:00Z
 - Host: darwin/arm64
 - Safety note: Generated for authorized iOS security testing only.

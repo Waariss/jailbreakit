@@ -16,7 +16,7 @@ Project documents:
 
 - [Security policy](SECURITY.md)
 - [MASTG-style positioning](docs/MASTG-POSITIONING.md)
-- [v1.3.1 release notes](docs/RELEASE-v1.3.1.md)
+- [v1.3.2 release notes](docs/RELEASE-v1.3.2.md)
 - [Example outputs](examples/)
 - [OWASP MASTG issue draft](docs/OWASP-MASTG-ISSUE-DRAFT.md)
 
@@ -53,16 +53,29 @@ Windows is not supported yet. The project is currently iPhone-first; iPad, iPod,
 
 ## Install
 
-Clone the repository:
+Install the latest release binary after `install.sh` is pushed to `main`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | sh
+```
+
+Install a pinned release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | JAILBREAKIT_VERSION=v1.3.2 sh
+```
+
+Use a custom install directory:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | INSTALL_DIR="$HOME/.local/bin" sh
+```
+
+Build from source:
 
 ```sh
 git clone https://github.com/Waariss/jailbreakit.git
 cd jailbreakit
-```
-
-Build the binary:
-
-```sh
 go build -o jailbreakit ./cmd/jailbreakit
 ```
 
@@ -462,6 +475,6 @@ Respect the licenses, documentation, and safety guidance of the upstream project
 
 ## Status
 
-Current public release for iOS pentest lab readiness. `jailbreakit` v1.3.1 focuses on authorized iOS pentest environment preparation and MASTG-style dynamic analysis workflows. Expect incremental updates to commands, compatibility data, and lab-readiness checks as the project matures.
+Current public release for iOS pentest lab readiness. `jailbreakit` v1.3.2 focuses on authorized iOS pentest environment preparation, MASTG-style dynamic analysis workflows, and easier release binary installation. Expect incremental updates to commands, compatibility data, and lab-readiness checks as the project matures.
 
 `jailbreakit` is an independent project and is not affiliated with, endorsed by, or officially maintained by OWASP.
