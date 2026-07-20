@@ -22,13 +22,13 @@ The installer verifies a release checksum when `SHA256SUMS` is available.
 
 ## Homebrew
 
-The prepared Formula is intended for the future `Waariss/homebrew-tap` repository:
+The public Formula is available from `Waariss/homebrew-tap`:
 
 ```sh
 brew install waariss/tap/jailbreakit
 ```
 
-This is not publicly supported until that tap exists and the Formula has passed maintainer testing.
+The tap is maintained separately from this repository and is updated after tagged releases.
 
 ## Not currently supported
 

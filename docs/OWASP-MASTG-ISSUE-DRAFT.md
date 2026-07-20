@@ -40,7 +40,7 @@ It helps testers verify local dependencies, connected-device metadata, SSH/iprox
 
 ## Maintenance Status
 
-The project is maintained as a Go CLI with unit tests and GitHub Actions for formatting, tests, and release builds. v1.3.2 is the current public lab-readiness release.
+The project is maintained as a Go CLI with unit tests and GitHub Actions for formatting, tests, and release builds. v1.4.1 is the current public lab-readiness release.
 
 ## Commands and Examples
 

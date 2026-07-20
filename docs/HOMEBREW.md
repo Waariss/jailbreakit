@@ -1,11 +1,11 @@
 # Homebrew Tap Preparation
 
 The canonical Formula template is `packaging/homebrew/Formula/jailbreakit.rb`.
-The tap is not published yet. Do not advertise `brew install waariss/tap/jailbreakit` as available until the external repository exists and the Formula has been tested there.
+The public tap is available at [Waariss/homebrew-tap](https://github.com/Waariss/homebrew-tap). Users can install the current Formula with `brew install waariss/tap/jailbreakit`.
 
-## First-time tap setup
+## Tap maintenance
 
-Create a public GitHub repository named `Waariss/homebrew-tap`:
+The tap repository uses this structure:
 
 ```text
 homebrew-tap/
@@ -14,19 +14,17 @@ homebrew-tap/
 └── README.md
 ```
 
-Copy `jailbreakit/packaging/homebrew/Formula/jailbreakit.rb` to `homebrew-tap/Formula/jailbreakit.rb`, then replace its source archive checksum with the verified value.
+For a new release, copy the tested Formula from `jailbreakit/packaging/homebrew/Formula/jailbreakit.rb` to `homebrew-tap/Formula/jailbreakit.rb`, then commit and push the Formula update to the tap repository.
 
 For a released tag, update the template from this repository:
 
 ```sh
-./scripts/update-homebrew-formula.sh v1.3.2
+./scripts/update-homebrew-formula.sh v1.4.1
 ```
 
 The helper downloads the tagged source archive, calculates SHA256 using `shasum` or `sha256sum`, and changes only the Formula URL and checksum.
 
 ## User installation
-
-After the tap is public and tested:
 
 ```sh
 brew install waariss/tap/jailbreakit
@@ -54,7 +52,7 @@ brew test waariss/tap/jailbreakit
 brew audit --strict waariss/tap/jailbreakit
 ```
 
-Before the tap exists, test the Formula file directly:
+To test a Formula update locally before pushing it to the tap:
 
 ```sh
 brew install --build-from-source ./packaging/homebrew/Formula/jailbreakit.rb

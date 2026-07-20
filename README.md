@@ -16,8 +16,7 @@ Project documents:
 
 - [Security policy](SECURITY.md)
 - [MASTG-style positioning](docs/MASTG-POSITIONING.md)
-- [v1.3.2 release notes](docs/RELEASE-v1.3.2.md)
-- [v1.4.0 release notes](docs/RELEASE-v1.4.0.md)
+- [v1.4.1 release notes](docs/RELEASE-v1.4.1.md)
 - [Example outputs](examples/)
 - [OWASP MASTG issue draft](docs/OWASP-MASTG-ISSUE-DRAFT.md)
 
@@ -56,7 +55,7 @@ Windows is not supported yet. The project is currently iPhone-first; iPad, iPod,
 
 ### Homebrew (Recommended for macOS)
 
-The `Waariss/homebrew-tap` repository is planned but is not published yet. After it is created and the Formula is tested:
+The `Waariss/homebrew-tap` repository is published and the Formula is available:
 
 ```sh
 brew install waariss/tap/jailbreakit
@@ -73,7 +72,7 @@ go install github.com/Waariss/jailbreakit/cmd/jailbreakit@latest
 Install a pinned version:
 
 ```sh
-go install github.com/Waariss/jailbreakit/cmd/jailbreakit@v1.3.2
+go install github.com/Waariss/jailbreakit/cmd/jailbreakit@v1.4.1
 ```
 
 Make sure your Go binary directory, commonly `$(go env GOPATH)/bin`, is in `PATH`.
@@ -89,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh
 Install a pinned release:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | JAILBREAKIT_VERSION=v1.3.2 sh
+curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | JAILBREAKIT_VERSION=v1.4.1 sh
 ```
 
 Use a custom install directory:
@@ -517,6 +516,6 @@ Respect the licenses, documentation, and safety guidance of the upstream project
 
 ## Status
 
-Current public release for iOS pentest lab readiness. `jailbreakit` v1.3.2 focuses on authorized iOS pentest environment preparation, MASTG-style dynamic analysis workflows, and easier release binary installation. Expect incremental updates to commands, compatibility data, and lab-readiness checks as the project matures.
+Current public release for iOS pentest lab readiness. `jailbreakit` v1.4.1 focuses on authorized iOS pentest environment preparation, MASTG-style dynamic analysis workflows, and end-to-end lab readiness checks.
 
 `jailbreakit` is an independent project and is not affiliated with, endorsed by, or officially maintained by OWASP.
