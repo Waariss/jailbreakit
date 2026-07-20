@@ -3,8 +3,11 @@ package certprofile
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"html"
@@ -40,6 +43,66 @@ type Options struct {
 	OutPath  string
 	Name     string
 	Install  bool
+}
+
+type VerifyReport struct {
+	Fingerprint    string
+	Subject        string
+	Expires        string
+	ProfilePath    string
+	ProfileChecked bool
+	ProfileMatches bool
+}
+
+func Verify(certPath, profilePath string) (VerifyReport, error) {
+	content, err := os.ReadFile(certPath)
+	if err != nil {
+		return VerifyReport{}, err
+	}
+	der := certBytes(content)
+	certificate, err := x509.ParseCertificate(der)
+	if err != nil {
+		return VerifyReport{}, fmt.Errorf("parse Burp CA certificate: %w", err)
+	}
+	digest := sha256.Sum256(der)
+	report := VerifyReport{
+		Fingerprint: strings.ToUpper(fmt.Sprintf("%x", digest[:])),
+		Subject:     certificate.Subject.String(),
+		Expires:     certificate.NotAfter.UTC().Format(time.RFC3339),
+	}
+	if strings.TrimSpace(profilePath) == "" {
+		return report, nil
+	}
+	profile, err := os.ReadFile(profilePath)
+	if err != nil {
+		return VerifyReport{}, err
+	}
+	report.ProfilePath = profilePath
+	report.ProfileChecked = true
+	report.ProfileMatches = profileContainsCertificate(profile, der)
+	return report, nil
+}
+
+func profileContainsCertificate(profile, der []byte) bool {
+	decoder := xml.NewDecoder(bytes.NewReader(profile))
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		start, ok := token.(xml.StartElement)
+		if !ok || start.Name.Local != "data" {
+			continue
+		}
+		var encoded string
+		if err := decoder.DecodeElement(&encoded, &start); err != nil {
+			return false
+		}
+		decoded, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(encoded), ""))
+		if err == nil && bytes.Equal(decoded, der) {
+			return true
+		}
+	}
 }
 
 func Build(options Options) ([]byte, error) {
@@ -191,12 +254,10 @@ func InstallerFailureHints(w io.Writer) {
 }
 
 func TrustInstructions(w io.Writer) {
-	fmt.Fprintln(w, "[*] On iPhone: Settings > General > VPN & Device Management")
-	fmt.Fprintln(w, "[*] Install the Burp CA profile if iOS asks for confirmation")
-	fmt.Fprintln(w, "[!] Did you enable full trust for the certificate?")
-	fmt.Fprintln(w, "    Go to: Settings > General > About > Certificate Trust Settings")
-	fmt.Fprintln(w, "    Then enable the toggle for: Burp Suite CA")
-	fmt.Fprintln(w, "[*] jailbreakit does not bypass or auto-enable iOS certificate trust.")
+	fmt.Fprintln(w, "[>] iPhone action: install the profile in Settings > General > VPN & Device Management")
+	fmt.Fprintln(w, "[>] Enable full trust: Settings > General > About > Certificate Trust Settings")
+	fmt.Fprintln(w, "[>] Then enable the toggle for: Burp Suite CA")
+	fmt.Fprintln(w, "[!] Did you enable full trust? jailbreakit does not bypass or auto-enable iOS certificate trust.")
 }
 
 func certBytes(content []byte) []byte {

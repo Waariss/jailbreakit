@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -16,12 +17,14 @@ import (
 
 type LookupFunc func(string) (string, error)
 type RunFunc func(context.Context, string, ...string) ([]byte, error)
+type InteractiveRunFunc func(context.Context, string, ...string) ([]byte, error)
 type DetectFunc func() (device.Info, error)
 
 type Checker struct {
-	Lookup LookupFunc
-	Run    RunFunc
-	Detect DetectFunc
+	Lookup         LookupFunc
+	Run            RunFunc
+	RunInteractive InteractiveRunFunc
+	Detect         DetectFunc
 }
 
 type ToolCheck struct {
@@ -41,9 +44,11 @@ type DeviceCheck struct {
 }
 
 type SSHOptions struct {
-	Host string
-	Port int
-	User string
+	Host        string
+	Port        int
+	User        string
+	DeviceFrida bool
+	Interactive bool
 }
 
 type SSHCheck struct {
@@ -58,10 +63,20 @@ type SSHCheck struct {
 }
 
 type FridaCheck struct {
-	Frida       ToolCheck `json:"frida"`
-	FridaPS     ToolCheck `json:"frida_ps"`
-	Objection   ToolCheck `json:"objection"`
-	Suggestions []string  `json:"suggestions"`
+	Frida       ToolCheck        `json:"frida"`
+	FridaPS     ToolCheck        `json:"frida_ps"`
+	Objection   ToolCheck        `json:"objection"`
+	Device      DeviceFridaCheck `json:"device"`
+	Suggestions []string         `json:"suggestions"`
+}
+
+type DeviceFridaCheck struct {
+	Checked bool   `json:"checked"`
+	OK      bool   `json:"ok"`
+	Command string `json:"command,omitempty"`
+	Output  string `json:"output,omitempty"`
+	Error   string `json:"error,omitempty"`
+	Hint    string `json:"hint,omitempty"`
 }
 
 type LabCheck struct {
@@ -78,6 +93,11 @@ func DefaultChecker() Checker {
 		Lookup: exec.LookPath,
 		Run: func(ctx context.Context, name string, args ...string) ([]byte, error) {
 			cmd := exec.CommandContext(ctx, name, args...)
+			return cmd.CombinedOutput()
+		},
+		RunInteractive: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			cmd := exec.CommandContext(ctx, name, args...)
+			cmd.Stdin = os.Stdin
 			return cmd.CombinedOutput()
 		},
 		Detect: device.Detect,
@@ -98,6 +118,9 @@ func (c Checker) withDefaults() Checker {
 	}
 	if c.Run == nil {
 		c.Run = DefaultChecker().Run
+	}
+	if c.RunInteractive == nil {
+		c.RunInteractive = DefaultChecker().RunInteractive
 	}
 	if c.Detect == nil {
 		c.Detect = device.Detect
@@ -179,11 +202,38 @@ func (c Checker) FridaReadiness() FridaCheck {
 	}
 }
 
+func (c Checker) FridaDeviceReadiness() DeviceFridaCheck {
+	c = c.withDefaults()
+	result := DeviceFridaCheck{
+		Checked: true,
+		Command: "frida-ps -U",
+	}
+	if _, err := c.Lookup("frida-ps"); err != nil {
+		result.Error = "frida-ps is not available on the host"
+		result.Hint = "Install host tools with: python3 -m pip install frida-tools"
+		return result
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	out, err := c.Run(ctx, "frida-ps", "-U")
+	result.Output = strings.TrimSpace(string(out))
+	if err != nil {
+		result.Error = strings.TrimSpace(string(out))
+		if result.Error == "" {
+			result.Error = err.Error()
+		}
+		result.Hint = "Ensure a paired USB device is connected and frida-server is installed and running on the authorized jailbroken device."
+		return result
+	}
+	result.OK = true
+	return result
+}
+
 func (c Checker) SSH(options SSHOptions) SSHCheck {
 	if strings.TrimSpace(options.Host) == "" {
 		return SSHCheck{
 			Checked: false,
-			Hint:    "pass --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root after starting iproxy",
+			Hint:    "pass --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root after starting iproxy; add --ssh-interactive for password auth",
 		}
 	}
 	c = c.withDefaults()
@@ -201,16 +251,26 @@ func (c Checker) SSH(options SSHOptions) SSHCheck {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	out, err := c.Run(ctx, "ssh",
-		"-o", "BatchMode=yes",
-		"-o", "ConnectTimeout=5",
+	args := []string{"-o", "ConnectTimeout=5"}
+	if !options.Interactive {
+		args = append(args, "-o", "BatchMode=yes")
+	}
+	args = append(args,
 		"-p", strconv.Itoa(options.Port),
 		fmt.Sprintf("%s@%s", options.User, options.Host),
 		"echo", "jailbreakit-ssh-ok",
 	)
+	var run func(context.Context, string, ...string) ([]byte, error) = c.Run
+	if options.Interactive {
+		run = c.RunInteractive
+	}
+	out, err := run(ctx, "ssh", args...)
 	result.Output = strings.TrimSpace(string(out))
 	if err != nil {
-		result.Error = err.Error()
+		result.Error = strings.TrimSpace(string(out))
+		if result.Error == "" {
+			result.Error = err.Error()
+		}
 		return result
 	}
 	result.OK = strings.Contains(result.Output, "jailbreakit-ssh-ok")
@@ -218,56 +278,119 @@ func (c Checker) SSH(options SSHOptions) SSHCheck {
 }
 
 func (c Checker) Lab(options SSHOptions) LabCheck {
+	frida := c.FridaReadiness()
+	if options.DeviceFrida {
+		frida.Device = c.FridaDeviceReadiness()
+	}
 	return LabCheck{
 		HostDependencies: c.HostDependencies(),
 		Device:           c.Device(),
 		IPAInstall:       c.IPAInstallReadiness(),
-		Frida:            c.FridaReadiness(),
+		Frida:            frida,
 		SSH:              c.SSH(options),
 		SuggestedTunnel:  "iproxy 2222 22",
 	}
 }
 
 func PrintLab(w io.Writer, report LabCheck) {
-	for _, dep := range report.HostDependencies {
-		printTool(w, dep)
-	}
-	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Lab readiness")
 	if report.Device.Detected {
 		info := report.Device.Info
-		fmt.Fprintln(w, "[+] Connected iOS device detected")
-		fmt.Fprintf(w, "    ProductType: %s\n", valueOrUnknown(info.ProductType))
-		fmt.Fprintf(w, "    Model:       %s\n", valueOrUnknown(info.ModelName))
-		fmt.Fprintf(w, "    Chip:        %s\n", valueOrUnknown(info.Chip))
-		fmt.Fprintf(w, "    iOS:         %s\n", valueOrUnknown(info.OSVersion))
+		fmt.Fprintf(w, "[+] Device: %s (%s), %s, iOS %s\n", valueOrUnknown(info.ModelName), valueOrUnknown(info.ProductType), valueOrUnknown(info.Chip), valueOrUnknown(info.OSVersion))
 	} else {
-		fmt.Fprintf(w, "[-] Connected iOS device: not detected (%s)\n", valueOrUnknown(report.Device.Error))
+		fmt.Fprintf(w, "[-] Device: not detected (%s)\n", valueOrUnknown(report.Device.Error))
 	}
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "[*] IPA install readiness")
-	for _, dep := range report.IPAInstall {
-		printTool(w, dep)
+	printSummary(w, "Host tools", report.HostDependencies)
+	printSummary(w, "IPA install", report.IPAInstall)
+	printSummary(w, "Frida host", []ToolCheck{report.Frida.Frida, report.Frida.FridaPS, report.Frida.Objection})
+	if report.Frida.Device.Checked {
+		if report.Frida.Device.OK {
+			fmt.Fprintln(w, "[+] Frida device: ready")
+		} else {
+			fmt.Fprintf(w, "[-] Frida device: %s\n", shortError(report.Frida.Device.Error))
+		}
+	} else {
+		fmt.Fprintln(w, "[>] Frida device: skipped (use lab-check --device)")
 	}
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "[*] Frida / Objection readiness")
-	printTool(w, report.Frida.Frida)
-	printTool(w, report.Frida.FridaPS)
-	printTool(w, report.Frida.Objection)
-	for _, suggestion := range report.Frida.Suggestions {
-		fmt.Fprintf(w, "    next: %s\n", suggestion)
-	}
-	fmt.Fprintln(w)
 	printSSH(w, report.SSH)
-	fmt.Fprintf(w, "[*] Suggested tunnel: %s\n", report.SuggestedTunnel)
+	if !report.Device.Detected || report.SSH.Checked && !report.SSH.OK {
+		fmt.Fprintf(w, "[>] Start tunnel: %s\n", report.SuggestedTunnel)
+	}
+	if missing := missingBinaries(report.HostDependencies); len(missing) > 0 {
+		fmt.Fprintf(w, "[>] Next: jailbreakit doctor (%s missing)\n", strings.Join(missing, ", "))
+	}
+	if !report.Device.Detected {
+		fmt.Fprintln(w, "[>] Next: connect, unlock, and trust the iPhone")
+	}
+	if !report.Frida.Frida.Available || !report.Frida.FridaPS.Available || !report.Frida.Objection.Available {
+		fmt.Fprintln(w, "[>] Next: python3 -m pip install frida-tools objection")
+	}
+	if report.Frida.Device.Checked && !report.Frida.Device.OK && report.Frida.Device.Hint != "" {
+		fmt.Fprintf(w, "[>] Next: %s\n", report.Frida.Device.Hint)
+	}
 }
 
 func PrintFrida(w io.Writer, report FridaCheck) {
-	printTool(w, report.Frida)
-	printTool(w, report.FridaPS)
-	printTool(w, report.Objection)
-	for _, suggestion := range report.Suggestions {
-		fmt.Fprintf(w, "[*] %s\n", suggestion)
+	fmt.Fprintln(w, "Frida readiness")
+	printCompactTool(w, "Host Frida", report.Frida)
+	printCompactTool(w, "frida-ps", report.FridaPS)
+	printCompactTool(w, "Objection", report.Objection)
+	if report.Device.Checked {
+		if report.Device.OK {
+			fmt.Fprintln(w, "[+] Device Frida: ready")
+		} else {
+			fmt.Fprintf(w, "[-] Device Frida: %s\n", shortError(report.Device.Error))
+		}
+	} else {
+		fmt.Fprintln(w, "[>] Device Frida: skipped (run with --device)")
 	}
+	if !report.Frida.Available || !report.FridaPS.Available || !report.Objection.Available {
+		fmt.Fprintln(w, "[>] Install: python3 -m pip install frida-tools objection")
+	}
+	if report.Device.Checked && !report.Device.OK && report.Device.Hint != "" {
+		fmt.Fprintf(w, "[>] %s\n", report.Device.Hint)
+	}
+}
+
+func printSummary(w io.Writer, label string, tools []ToolCheck) {
+	ready := 0
+	for _, tool := range tools {
+		if tool.Available {
+			ready++
+		}
+	}
+	if ready == len(tools) {
+		fmt.Fprintf(w, "[+] %s: ready (%d/%d)\n", label, ready, len(tools))
+	} else {
+		fmt.Fprintf(w, "[!] %s: incomplete (%d/%d)\n", label, ready, len(tools))
+		for _, tool := range tools {
+			if !tool.Available {
+				fmt.Fprintf(w, "    missing: %s\n", tool.Binary)
+			}
+		}
+	}
+}
+
+func printCompactTool(w io.Writer, label string, tool ToolCheck) {
+	if !tool.Available {
+		fmt.Fprintf(w, "[-] %s: missing\n", label)
+		return
+	}
+	if tool.Version != "" {
+		fmt.Fprintf(w, "[+] %s: %s\n", label, tool.Version)
+		return
+	}
+	fmt.Fprintf(w, "[+] %s: ready\n", label)
+}
+
+func missingBinaries(tools []ToolCheck) []string {
+	var missing []string
+	for _, tool := range tools {
+		if !tool.Available {
+			missing = append(missing, tool.Binary)
+		}
+	}
+	return missing
 }
 
 func printTool(w io.Writer, tool ToolCheck) {
@@ -277,7 +400,7 @@ func printTool(w io.Writer, tool ToolCheck) {
 			return
 		}
 		if tool.Error != "" && tool.Error != "missing" {
-			fmt.Fprintf(w, "[!] %s: %s (version check: %s)\n", tool.Name, tool.Path, tool.Error)
+			fmt.Fprintf(w, "[!] %s: %s (version check: %s)\n", tool.Name, tool.Path, shortError(tool.Error))
 			return
 		}
 		fmt.Fprintf(w, "[+] %s: %s\n", tool.Name, tool.Path)
@@ -290,16 +413,45 @@ func printTool(w io.Writer, tool ToolCheck) {
 	fmt.Fprintf(w, "%s %s: missing\n", prefix, tool.Name)
 }
 
+func shortError(value string) string {
+	value = strings.TrimSpace(value)
+	for _, line := range strings.Split(value, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, "Host key verification failed") ||
+			strings.Contains(line, "Permission denied") ||
+			strings.Contains(line, "Connection refused") ||
+			strings.Contains(line, "Connection timed out") ||
+			strings.Contains(line, "Could not resolve hostname") {
+			return line
+		}
+	}
+	if index := strings.IndexByte(value, '\n'); index >= 0 {
+		value = value[:index]
+	}
+	if len(value) > 160 {
+		value = value[:157] + "..."
+	}
+	return valueOrUnknown(value)
+}
+
 func printSSH(w io.Writer, check SSHCheck) {
 	if !check.Checked {
-		fmt.Fprintf(w, "[!] SSH check skipped: %s\n", check.Hint)
+		fmt.Fprintf(w, "[>] SSH: skipped (%s)\n", check.Hint)
 		return
 	}
 	if check.OK {
-		fmt.Fprintf(w, "[+] SSH check %s@%s:%d: %s\n", check.User, check.Host, check.Port, check.Output)
+		fmt.Fprintf(w, "[+] SSH: ready (%s@%s:%d)\n", check.User, check.Host, check.Port)
 		return
 	}
-	fmt.Fprintf(w, "[-] SSH check %s@%s:%d failed: %s\n", check.User, check.Host, check.Port, check.Error)
+	fmt.Fprintf(w, "[-] SSH: failed (%s@%s:%d)\n", check.User, check.Host, check.Port)
+	if check.Error != "" {
+		fmt.Fprintf(w, "    error: %s\n", shortError(check.Error))
+	}
+	if strings.Contains(check.Error, "Host key verification failed") {
+		fmt.Fprintf(w, "[>] Next: verify the current key, then run ssh-keygen -R '[%s]:%d'\n", check.Host, check.Port)
+	} else if strings.Contains(check.Error, "Permission denied") {
+		fmt.Fprintln(w, "[>] Next: use an SSH key/agent or rerun with --ssh-interactive")
+	}
 }
 
 func firstLine(out []byte) string {

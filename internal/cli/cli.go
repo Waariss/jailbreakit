@@ -14,6 +14,7 @@ import (
 	"github.com/Waariss/jailbreakit/internal/downloader"
 	"github.com/Waariss/jailbreakit/internal/evidence"
 	"github.com/Waariss/jailbreakit/internal/installer"
+	"github.com/Waariss/jailbreakit/internal/ipa"
 	"github.com/Waariss/jailbreakit/internal/readiness"
 	"github.com/Waariss/jailbreakit/internal/recommender"
 	"github.com/Waariss/jailbreakit/internal/runner/palera1n"
@@ -85,11 +86,12 @@ Common:
   jailbreakit doctor
   jailbreakit detect
   jailbreakit recommend --ios 15.8.8 --product iPhone8,1
-  jailbreakit lab-check
-  jailbreakit frida-check
+  jailbreakit lab-check [--device]
+  jailbreakit frida-check [--device]
   jailbreakit evidence --format markdown
   jailbreakit burp-ca --cert cacert.der --install
-  jailbreakit install ./App.ipa
+  jailbreakit burp-ca verify --cert cacert.der
+  jailbreakit install ./App.ipa [--inspect]
   jailbreakit version
 
 Advanced:
@@ -97,7 +99,7 @@ Advanced:
 }
 
 func printVersion(w io.Writer) {
-	fmt.Fprintf(w, "jailbreakit %s by %s\n", version.Version, version.Author)
+	fmt.Fprintf(w, "jailbreakit %s by %s\n", version.Resolved(), version.Author)
 	if version.Commit != "unknown" {
 		fmt.Fprintf(w, "commit: %s\n", version.Commit)
 	}
@@ -118,7 +120,7 @@ Actions:
   jailbreakit run dopamine --sideload-cmd "plumesign sign --package {ipa} --apple-id --register-and-install"
 
 Utility:
-  jailbreakit lab-check --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root
+  jailbreakit lab-check --device --ssh-interactive --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root
   jailbreakit frida-check
   jailbreakit evidence --format markdown
   jailbreakit evidence --format json --out lab-evidence.json
@@ -133,12 +135,12 @@ Utility:
 func wizard(stdin io.Reader, stdout, stderr io.Writer) error {
 	prompt := newPrompt(stdin, stdout)
 
-	fmt.Fprintf(stdout, "jailbreakit %s by %s\n", version.Version, version.Author)
+	fmt.Fprintf(stdout, "jailbreakit %s by %s\n", version.Resolved(), version.Author)
 	if err := ensureDependencies(prompt, stdout); err != nil {
 		return err
 	}
 
-	fmt.Fprintln(stdout, "[*] Detecting device...")
+	fmt.Fprintln(stdout, "[>] Detecting device...")
 	info, err := device.Detect()
 	if err != nil {
 		fmt.Fprintf(stdout, "[!] Auto-detect failed: %v\n", err)
@@ -152,7 +154,7 @@ func wizard(stdin io.Reader, stdout, stderr io.Writer) error {
 	}
 
 	fmt.Fprintln(stdout)
-	printDevice(stdout, info)
+	printDeviceSummary(stdout, info)
 
 	result := recommender.Recommend(info)
 	fmt.Fprintln(stdout)
@@ -163,7 +165,7 @@ func wizard(stdin io.Reader, stdout, stderr io.Writer) error {
 		return nil
 	}
 
-	fmt.Fprintln(stdout, "Options:")
+	fmt.Fprintln(stdout, "[>] Available routes:")
 	for i, option := range result.Options {
 		fmt.Fprintf(stdout, "[%d] %s %s - %s, %s\n", i+1, option.Name, option.Version, option.Mode, option.Type)
 	}
@@ -210,14 +212,14 @@ func ensureDependencies(prompt *prompt, stdout io.Writer) error {
 
 func wizardPalera1n(prompt *prompt, stdout, stderr io.Writer) error {
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, "palera1n mode:")
+	fmt.Fprintln(stdout, "[>] palera1n mode")
 	fmt.Fprintln(stdout, "[1] rootless")
 	fmt.Fprintln(stdout, "[2] rootful fakefs")
 
 	mode := palera1n.Rootless
 	if prompt.choose("Choose palera1n mode", 2) == 2 {
 		fmt.Fprintln(stdout)
-		fmt.Fprintln(stdout, "rootful stage:")
+		fmt.Fprintln(stdout, "[>] rootful stage")
 		fmt.Fprintln(stdout, "[1] create BindFS (first time)")
 		fmt.Fprintln(stdout, "[2] boot existing BindFS")
 		mode = palera1n.RootfulCreateFS
@@ -251,43 +253,34 @@ func doctorWithArgs(args []string, stdin io.Reader, w io.Writer) error {
 	}
 
 	missing := deps.MissingRequired()
+	ready := 0
 	for _, dep := range deps.Required() {
-		path, ok := device.LookPath(dep.Binary)
+		_, ok := device.LookPath(dep.Binary)
 		if ok {
-			fmt.Fprintf(w, "[+] %-28s %s\n", dep.Name, path)
+			ready++
 		} else {
-			fmt.Fprintf(w, "[-] %-28s missing (%s)\n", dep.Name, dep.RequiredFor)
-			if dep.InstallHint != "" {
-				fmt.Fprintf(w, "    install: %s\n", dep.InstallHint)
-			}
+			fmt.Fprintf(w, "[-] %s\n", dep.Binary)
 		}
 	}
+	fmt.Fprintf(w, "Doctor: %d/%d host dependencies ready\n", ready, len(deps.Required()))
 
 	fmt.Fprintln(w)
 	missingInstallTools := installer.MissingTools()
 	if len(missingInstallTools) == 0 {
-		fmt.Fprintln(w, "[+] Jailbroken IPA install tools ssh, scp, iproxy")
+		fmt.Fprintln(w, "[+] IPA over SSH: ready")
 	} else {
-		fmt.Fprintf(w, "[-] Jailbroken IPA install tools missing: %s\n", strings.Join(missingInstallTools, ", "))
-		if hint := installer.InstallHint(); hint != "" {
-			fmt.Fprintf(w, "    install: %s\n", hint)
-		}
+		fmt.Fprintf(w, "[-] IPA over SSH: missing %s\n", strings.Join(missingInstallTools, ", "))
 	}
 	if missingHostTools := installer.MissingHostTools(); len(missingHostTools) == 0 {
-		fmt.Fprintln(w, "[+] Host IPA install fallback ideviceinstaller")
+		fmt.Fprintln(w, "[+] IPA host fallback: ready")
 	} else {
-		fmt.Fprintf(w, "[-] Host IPA install fallback missing: %s\n", strings.Join(missingHostTools, ", "))
+		fmt.Fprintf(w, "[-] IPA host fallback: missing %s\n", strings.Join(missingHostTools, ", "))
 	}
 
-	fmt.Fprintln(w)
 	if sideload.Configured("") {
-		fmt.Fprintf(w, "[+] Dopamine sideload command %s\n", sideload.ResolveCommand(""))
+		fmt.Fprintln(w, "[+] Dopamine signer: ready")
 	} else {
-		fmt.Fprintln(w, `[-] Dopamine sideload command missing`)
-		if hint := sideload.InstallHint(); hint != "" {
-			fmt.Fprintf(w, "    install: %s\n", hint)
-		}
-		fmt.Fprintln(w, `    or use --sideload-cmd "your-signer {ipa}"`)
+		fmt.Fprintln(w, "[!] Dopamine signer: not configured")
 	}
 
 	if *install {
@@ -296,6 +289,9 @@ func doctorWithArgs(args []string, stdin io.Reader, w io.Writer) error {
 			return nil
 		}
 		return deps.InstallMissing(runnable, w)
+	}
+	if len(missing) > 0 {
+		fmt.Fprintln(w, "[>] Next: jailbreakit doctor --install")
 	}
 	return nil
 }
@@ -361,28 +357,39 @@ func parseLabCheckArgs(args []string) (readiness.SSHOptions, error) {
 	host := fs.String("ssh-host", "", "SSH host to check; omit to skip SSH credential checks")
 	port := fs.Int("ssh-port", 2222, "SSH port for optional SSH check")
 	user := fs.String("ssh-user", "root", "SSH user for optional SSH check")
+	interactive := fs.Bool("ssh-interactive", false, "let ssh prompt for a password; jailbreakit does not read or store it")
+	deviceFrida := fs.Bool("device", false, "also run frida-ps -U with a short timeout")
 	if err := fs.Parse(args); err != nil {
 		return readiness.SSHOptions{}, err
 	}
 	if fs.NArg() != 0 {
-		return readiness.SSHOptions{}, fmt.Errorf("usage: jailbreakit lab-check [--ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root]")
+		return readiness.SSHOptions{}, fmt.Errorf("usage: jailbreakit lab-check [--device] [--ssh-interactive] [--ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root]")
 	}
 	if *port < 1 || *port > 65535 {
 		return readiness.SSHOptions{}, fmt.Errorf("invalid SSH port %d", *port)
 	}
-	return readiness.SSHOptions{Host: *host, Port: *port, User: *user}, nil
+	return readiness.SSHOptions{Host: *host, Port: *port, User: *user, DeviceFrida: *deviceFrida, Interactive: *interactive}, nil
 }
 
 func fridaCheck(args []string, w io.Writer) error {
+	return fridaCheckWithChecker(args, w, readiness.DefaultChecker())
+}
+
+func fridaCheckWithChecker(args []string, w io.Writer, checker readiness.Checker) error {
 	fs := flag.NewFlagSet("frida-check", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	deviceCheck := fs.Bool("device", false, "also run frida-ps -U with a short timeout")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 0 {
-		return fmt.Errorf("usage: jailbreakit frida-check")
+		return fmt.Errorf("usage: jailbreakit frida-check [--device]")
 	}
-	readiness.PrintFrida(w, readiness.DefaultChecker().FridaReadiness())
+	report := checker.FridaReadiness()
+	if *deviceCheck {
+		report.Device = checker.FridaDeviceReadiness()
+	}
+	readiness.PrintFrida(w, report)
 	return nil
 }
 
@@ -422,6 +429,9 @@ func evidenceReport(args []string, stdout io.Writer) error {
 }
 
 func burpCA(args []string, stdout, stderr io.Writer) error {
+	if len(args) > 0 && args[0] == "verify" {
+		return burpCAVerify(args[1:], stdout)
+	}
 	fs := flag.NewFlagSet("burp-ca", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	cert := fs.String("cert", "", "Burp CA certificate path, e.g. cacert.der or cacert.pem")
@@ -442,7 +452,7 @@ func burpCA(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "[+] wrote %s\n", path)
+	fmt.Fprintf(stdout, "[+] Profile: %s\n", path)
 	if *install {
 		if err := certprofile.Install(path, stdout, stderr); err != nil {
 			if certprofile.IsMissingInstaller(err) {
@@ -457,6 +467,37 @@ func burpCA(args []string, stdout, stderr io.Writer) error {
 		}
 		fmt.Fprintln(stdout, "[+] profile install command completed")
 	}
+	certprofile.TrustInstructions(stdout)
+	return nil
+}
+
+func burpCAVerify(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("burp-ca verify", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	cert := fs.String("cert", "", "Burp CA certificate path")
+	profile := fs.String("profile", "burp-ca.mobileconfig", "local mobileconfig profile to inspect")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 || strings.TrimSpace(*cert) == "" {
+		return fmt.Errorf("usage: jailbreakit burp-ca verify --cert cacert.der [--profile burp-ca.mobileconfig]")
+	}
+	report, err := certprofile.Verify(*cert, *profile)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "[+] Burp CA certificate is valid\n")
+	fmt.Fprintf(stdout, "    SHA256: %s\n", report.Fingerprint)
+	fmt.Fprintf(stdout, "    Subject: %s\n", report.Subject)
+	fmt.Fprintf(stdout, "    Expires: %s\n", report.Expires)
+	if report.ProfileChecked {
+		if report.ProfileMatches {
+			fmt.Fprintf(stdout, "[+] Profile contains the matching certificate: %s\n", report.ProfilePath)
+		} else {
+			return fmt.Errorf("profile %s does not contain the supplied Burp CA certificate", report.ProfilePath)
+		}
+	}
+	fmt.Fprintln(stdout, "[!] This verifies local files only; it does not prove the profile is installed or fully trusted on the iPhone.")
 	certprofile.TrustInstructions(stdout)
 	return nil
 }
@@ -645,11 +686,20 @@ func installIPA(args []string, stdout, stderr io.Writer) error {
 	remoteDir := fs.String("remote-dir", "/tmp", "remote directory for temporary IPA copy")
 	installerName := fs.String("installer", "auto", "installer mode: auto, host, ideviceinstaller, appinst, or ipainstaller")
 	dryRun := fs.Bool("dry-run", false, "print commands without executing")
+	inspect := fs.Bool("inspect", false, "inspect IPA metadata and exit without installing")
 	if err := fs.Parse(normalizeInstallArgs(args)); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
 		return fmt.Errorf("usage: jailbreakit install <app.ipa>")
+	}
+	if *inspect {
+		report, err := ipa.Inspect(fs.Arg(0))
+		if err != nil {
+			return err
+		}
+		ipa.Print(stdout, report)
+		return nil
 	}
 	return installer.Run(installer.Options{
 		IPAPath:    fs.Arg(0),
@@ -703,6 +753,10 @@ func printDevice(w io.Writer, info device.Info) {
 	fmt.Fprintf(w, "Chip:         %s\n", valueOrUnknown(info.Chip))
 	fmt.Fprintf(w, "Family:       %s\n", valueOrUnknown(info.Family))
 	fmt.Fprintf(w, "iOS:          %s\n", valueOrUnknown(info.OSVersion))
+}
+
+func printDeviceSummary(w io.Writer, info device.Info) {
+	fmt.Fprintf(w, "[+] Device: %s (%s), %s, iOS %s\n", valueOrUnknown(info.ModelName), valueOrUnknown(info.ProductType), valueOrUnknown(info.Chip), valueOrUnknown(info.OSVersion))
 }
 
 func valueOrUnknown(value string) string {

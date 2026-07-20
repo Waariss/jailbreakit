@@ -32,6 +32,24 @@ func TestToolUsesLookupAndVersionRunner(t *testing.T) {
 	}
 }
 
+func TestFridaDeviceReadinessUsesUSBCheck(t *testing.T) {
+	var gotArgs []string
+	checker := Checker{
+		Lookup: func(name string) (string, error) { return "/bin/" + name, nil },
+		Run: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			gotArgs = append([]string{name}, args...)
+			return []byte("  PID  Name\n  1    SpringBoard\n"), nil
+		},
+	}
+	got := checker.FridaDeviceReadiness()
+	if !got.Checked || !got.OK || got.Command != "frida-ps -U" {
+		t.Fatalf("unexpected device readiness: %#v", got)
+	}
+	if strings.Join(gotArgs, " ") != "frida-ps -U" {
+		t.Fatalf("unexpected command: %v", gotArgs)
+	}
+}
+
 func TestToolMissing(t *testing.T) {
 	checker := Checker{Lookup: func(name string) (string, error) {
 		return "", errors.New("not found")
@@ -62,6 +80,46 @@ func TestSSHUsesSafeBatchModeCommand(t *testing.T) {
 	got := checker.SSH(SSHOptions{Host: "127.0.0.1", Port: 2222, User: "root"})
 	if !got.Checked || !got.OK {
 		t.Fatalf("expected successful SSH check, got %#v", got)
+	}
+}
+
+func TestSSHInteractiveUsesInteractiveRunner(t *testing.T) {
+	called := false
+	checker := Checker{
+		Run: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			t.Fatal("non-interactive runner should not be used")
+			return nil, nil
+		},
+		RunInteractive: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			called = true
+			if strings.Contains(strings.Join(args, " "), "BatchMode=yes") {
+				t.Fatal("interactive runner must not use BatchMode")
+			}
+			return []byte("jailbreakit-ssh-ok\n"), nil
+		},
+	}
+	got := checker.SSH(SSHOptions{Host: "127.0.0.1", Port: 2222, User: "root", Interactive: true})
+	if !called || !got.OK {
+		t.Fatalf("unexpected interactive SSH result: %#v", got)
+	}
+}
+
+func TestSSHPreservesUsefulFailureOutput(t *testing.T) {
+	checker := Checker{
+		Run: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			return []byte("root@127.0.0.1: Permission denied (publickey).\n"), errors.New("exit status 255")
+		},
+	}
+	got := checker.SSH(SSHOptions{Host: "127.0.0.1", Port: 2222, User: "root"})
+	if !strings.Contains(got.Error, "Permission denied") {
+		t.Fatalf("SSH() lost useful failure output: %#v", got)
+	}
+}
+
+func TestShortErrorPrefersUsefulSSHLine(t *testing.T) {
+	got := shortError("@@@@@@@@@@@@@@@@@@@@\nHost key verification failed.\n")
+	if got != "Host key verification failed." {
+		t.Fatalf("shortError() = %q", got)
 	}
 }
 
@@ -96,7 +154,10 @@ func TestPrintLabDoesNotDuplicateBinaryName(t *testing.T) {
 	if strings.Contains(text, "ideviceinfo ideviceinfo") || strings.Contains(text, "ssh ssh") || strings.Contains(text, "frida frida") {
 		t.Fatalf("output duplicated binary name:\n%s", text)
 	}
-	if !strings.Contains(text, "[+] Host dependency ideviceinfo: /bin/ideviceinfo") {
-		t.Fatalf("missing cleaned dependency line:\n%s", text)
+	if !strings.Contains(text, "[+] Host tools: ready (1/1)") {
+		t.Fatalf("missing concise host summary:\n%s", text)
+	}
+	if !strings.Contains(text, "[+] IPA install: ready (1/1)") {
+		t.Fatalf("missing concise IPA summary:\n%s", text)
 	}
 }

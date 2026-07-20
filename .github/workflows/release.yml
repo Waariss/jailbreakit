@@ -5,25 +5,30 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
   test:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: go.mod
           cache: false
-      - name: gofmt
-        run: test -z "$(gofmt -l .)"
-      - name: test
-        run: go test ./...
+      - name: validate
+        run: |
+          test -z "$(gofmt -l .)"
+          go test ./...
+          go vet ./...
+          go build ./cmd/jailbreakit
 
   build:
     needs: test
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -41,8 +46,10 @@ jobs:
             goarch: arm64
             name: jailbreakit-linux-arm64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: go.mod
           cache: false
@@ -52,19 +59,22 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
         run: |
-          go build \
+          mkdir -p dist
+          go build -trimpath \
             -ldflags "-s -w -X github.com/Waariss/jailbreakit/internal/version.Version=${GITHUB_REF_NAME} -X github.com/Waariss/jailbreakit/internal/version.Author=Waariss -X github.com/Waariss/jailbreakit/internal/version.Commit=${GITHUB_SHA} -X github.com/Waariss/jailbreakit/internal/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o dist/${{ matrix.name }} ./cmd/jailbreakit
-      - uses: actions/upload-artifact@v4
+            -o "dist/${{ matrix.name }}" ./cmd/jailbreakit
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ matrix.name }}
           path: dist/${{ matrix.name }}
 
   release:
     needs: build
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
           merge-multiple: true
@@ -72,6 +82,13 @@ jobs:
         run: |
           cd dist
           sha256sum jailbreakit-* > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
+      - name: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/RELEASE-${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+          fi

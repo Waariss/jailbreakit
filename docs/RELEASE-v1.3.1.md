@@ -41,4 +41,4 @@ git tag v1.3.1
 git push origin v1.3.1
 ```
 
-The auto-release workflow can also create the missing `v1.3.1` tag and release from `internal/version/version.go` when changes are pushed to `main`.
+Release automation is now tag-driven through `.github/workflows/release.yml`; pushes to `main` do not create a public release.
