@@ -49,7 +49,7 @@ func Build(checker readiness.Checker, sshOptions readiness.SSHOptions, now time.
 	lab := checker.Lab(sshOptions)
 	report := Report{
 		Tool:         "jailbreakit",
-		Version:      version.Version,
+		Version:      version.Resolved(),
 		Timestamp:    now.UTC().Format(time.RFC3339),
 		Host:         Host{OS: readiness.HostOS(), Arch: readiness.HostArch()},
 		Dependencies: lab.HostDependencies,

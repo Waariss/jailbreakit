@@ -2,10 +2,16 @@ package certprofile
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildMobileconfigFromPEM(t *testing.T) {
@@ -53,6 +59,47 @@ func TestWriteMobileconfig(t *testing.T) {
 	}
 	if !bytes.Contains(written, []byte("burp-ca")) {
 		t.Fatalf("unexpected profile content:\n%s", string(written))
+	}
+}
+
+func TestVerifyMatchesCertificateInProfile(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "Burp Suite CA"},
+		NotBefore:             time.Now().Add(-time.Minute),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}, &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "Burp Suite CA"},
+		NotBefore:             time.Now().Add(-time.Minute),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	certPath := filepath.Join(dir, "burp.der")
+	profilePath := filepath.Join(dir, "burp.mobileconfig")
+	if err := os.WriteFile(certPath, der, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Write(Options{CertPath: certPath, OutPath: profilePath}); err != nil {
+		t.Fatal(err)
+	}
+	report, err := Verify(certPath, profilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !report.ProfileMatches || report.Fingerprint == "" || report.Subject == "" {
+		t.Fatalf("unexpected verification report: %#v", report)
 	}
 }
 

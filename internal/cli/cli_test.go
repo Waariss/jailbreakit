@@ -2,12 +2,14 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Waariss/jailbreakit/internal/device"
+	"github.com/Waariss/jailbreakit/internal/readiness"
 )
 
 func TestInstallAcceptsFlagsAfterIPA(t *testing.T) {
@@ -62,8 +64,24 @@ func TestDispatchFridaCheck(t *testing.T) {
 	if err := run([]string{"frida-check"}, strings.NewReader(""), &stdout, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stdout.String(), "frida") || !strings.Contains(stdout.String(), "python3 -m pip install frida-tools objection") {
+	if !strings.Contains(stdout.String(), "Frida readiness") || !strings.Contains(stdout.String(), "Device Frida: skipped") {
 		t.Fatalf("unexpected frida-check output:\n%s", stdout.String())
+	}
+}
+
+func TestDispatchFridaCheckDevice(t *testing.T) {
+	checker := readiness.Checker{
+		Lookup: func(name string) (string, error) { return "/bin/" + name, nil },
+		Run: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			return []byte("SpringBoard\n"), nil
+		},
+	}
+	var stdout bytes.Buffer
+	if err := fridaCheckWithChecker([]string{"--device"}, &stdout, checker); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "Device Frida: ready") {
+		t.Fatalf("unexpected output:\n%s", stdout.String())
 	}
 }
 

@@ -17,6 +17,7 @@ Project documents:
 - [Security policy](SECURITY.md)
 - [MASTG-style positioning](docs/MASTG-POSITIONING.md)
 - [v1.3.2 release notes](docs/RELEASE-v1.3.2.md)
+- [v1.4.0 release notes](docs/RELEASE-v1.4.0.md)
 - [Example outputs](examples/)
 - [OWASP MASTG issue draft](docs/OWASP-MASTG-ISSUE-DRAFT.md)
 
@@ -53,7 +54,33 @@ Windows is not supported yet. The project is currently iPhone-first; iPad, iPod,
 
 ## Install
 
-Install the latest release binary after `install.sh` is pushed to `main`:
+### Homebrew (Recommended for macOS)
+
+The `Waariss/homebrew-tap` repository is planned but is not published yet. After it is created and the Formula is tested:
+
+```sh
+brew install waariss/tap/jailbreakit
+```
+
+### Install with Go
+
+Install the latest version from the public Go module:
+
+```sh
+go install github.com/Waariss/jailbreakit/cmd/jailbreakit@latest
+```
+
+Install a pinned version:
+
+```sh
+go install github.com/Waariss/jailbreakit/cmd/jailbreakit@v1.3.2
+```
+
+Make sure your Go binary directory, commonly `$(go env GOPATH)/bin`, is in `PATH`.
+
+### Installer script
+
+Install the latest GitHub Release binary:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | sh
@@ -71,7 +98,17 @@ Use a custom install directory:
 curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | INSTALL_DIR="$HOME/.local/bin" sh
 ```
 
-Build from source:
+### GitHub Release binary
+
+Release assets include macOS and Linux binaries for amd64 and arm64 plus `SHA256SUMS`. Download the matching binary from the [Releases page](https://github.com/Waariss/jailbreakit/releases), then verify it:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+On macOS, use `shasum -a 256 -c SHA256SUMS` if `sha256sum` is unavailable. Release binaries are not notarized yet; see the macOS note below.
+
+### Build from source
 
 ```sh
 git clone https://github.com/Waariss/jailbreakit.git
@@ -83,13 +120,6 @@ Run it:
 
 ```sh
 ./jailbreakit
-```
-
-Install into your Go bin path:
-
-```sh
-go install ./cmd/jailbreakit
-jailbreakit
 ```
 
 ### macOS Release Binary
@@ -104,7 +134,7 @@ xattr -d com.apple.quarantine jailbreakit-darwin-arm64
 
 For Intel Macs, replace `jailbreakit-darwin-arm64` with `jailbreakit-darwin-amd64`.
 
-Long term, signed and notarized macOS releases are planned.
+Signed and notarized macOS releases are not currently supported.
 
 ## Requirements
 
@@ -160,10 +190,14 @@ Common utility commands:
 ./jailbreakit detect
 ./jailbreakit recommend --ios 15.8.8 --product iPhone8,1
 ./jailbreakit lab-check
+./jailbreakit lab-check --device
 ./jailbreakit frida-check
+./jailbreakit frida-check --device
 ./jailbreakit evidence --format markdown
 ./jailbreakit burp-ca --cert cacert.der --install
+./jailbreakit burp-ca verify --cert cacert.der --profile burp-ca.mobileconfig
 ./jailbreakit install ./App.ipa
+./jailbreakit install ./App.ipa --inspect
 ./jailbreakit version
 ```
 
@@ -187,7 +221,7 @@ Check formatting:
 gofmt -w cmd internal
 ```
 
-GitHub Actions runs `gofmt` and `go test ./...` on pushes and pull requests. Tagged releases build macOS and Linux binaries. Pushes to `main` can also auto-create the missing version tag and GitHub Release from `internal/version/version.go`.
+GitHub Actions runs formatting, tests, vet, and installation smoke checks on pushes and pull requests. The tag-driven release workflow builds macOS and Linux binaries only when a maintainer pushes a `v*` tag. See [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md), [docs/HOMEBREW.md](docs/HOMEBREW.md), and [docs/RELEASING.md](docs/RELEASING.md).
 
 ## MASTG-Style Use Cases
 
@@ -203,6 +237,8 @@ GitHub Actions runs `gofmt` and `go test ./...` on pushes and pull requests. Tag
 
 `jailbreakit` does not create a new jailbreak, exploit third-party devices, bypass app DRM, provide decrypted IPAs, store Apple ID credentials, or fetch Frida server binaries automatically.
 
+For a jailbroken device, `frida-check --device` runs the read-only `frida-ps -U` check with a short timeout. It does not install `frida-server`. `burp-ca verify` validates a local certificate and mobileconfig profile; it cannot prove that iOS installed the profile or enabled Full Trust. `install --inspect` reads IPA metadata and exits without modifying or installing the archive.
+
 ## Lab Readiness
 
 Run a practical readiness check for an authorized iOS dynamic analysis lab:
@@ -216,6 +252,12 @@ If you already started an SSH tunnel, optionally verify SSH with a harmless comm
 ```sh
 iproxy 2222 22
 ./jailbreakit lab-check --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root
+```
+
+For password-based SSH, add `--ssh-interactive`. The prompt belongs to `ssh`; `jailbreakit` does not read or store credentials:
+
+```sh
+./jailbreakit lab-check --ssh-host 127.0.0.1 --ssh-port 2222 --ssh-user root --ssh-interactive
 ```
 
 Check host Frida / Objection readiness:
