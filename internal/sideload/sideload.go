@@ -143,6 +143,10 @@ func IsNoAccountError(err error) bool {
 }
 
 func Login(username string, stdout io.Writer) error {
+	signerPath, err := plumesignPath()
+	if err != nil {
+		return err
+	}
 	args := []string{"account", "login"}
 	if strings.TrimSpace(username) != "" {
 		args = append(args, "--username", strings.TrimSpace(username))
@@ -150,7 +154,7 @@ func Login(username string, stdout io.Writer) error {
 	fmt.Fprintln(stdout, "[*] Logging in to Apple Developer account")
 	fmt.Fprintln(stdout, "[*] The signer will prompt for password and 2FA if required")
 	fmt.Fprintln(stdout, "Apple ID 2FA Code: enter the code if Apple asks below")
-	cmd := exec.Command("./"+defaultSignerPath, args...)
+	cmd := exec.Command(signerPath, args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -158,21 +162,38 @@ func Login(username string, stdout io.Writer) error {
 	return cmd.Run()
 }
 
+func plumesignPath() (string, error) {
+	if _, err := os.Stat(defaultSignerPath); err == nil {
+		return "./" + defaultSignerPath, nil
+	}
+	if path, ok := device.LookPath("plumesign"); ok {
+		return path, nil
+	}
+	return "", fmt.Errorf("plumesign is not installed; %s", InstallHint())
+}
+
 func RunTerminal(ipaPath, command string, stdout io.Writer) error {
 	return runOnce(ipaPath, command, stdout, false)
 }
 
-func runOnce(ipaPath, command string, stdout io.Writer, captureStderr bool) error {
+func PreviewCommand(ipaPath, command string) (string, error) {
 	template := ResolveCommand(command)
 	if template == "" {
-		return fmt.Errorf("%s is not configured", envCommand)
+		return "", fmt.Errorf("%s is not configured", envCommand)
 	}
 	if !strings.Contains(template, "{ipa}") {
-		return fmt.Errorf("%s must include {ipa}", envCommand)
+		return "", fmt.Errorf("%s must include {ipa}", envCommand)
+	}
+	return strings.ReplaceAll(template, "{ipa}", shellQuote(ipaPath)), nil
+}
+
+func runOnce(ipaPath, command string, stdout io.Writer, captureStderr bool) error {
+	resolved, err := PreviewCommand(ipaPath, command)
+	if err != nil {
+		return err
 	}
 
-	resolved := strings.ReplaceAll(template, "{ipa}", shellQuote(ipaPath))
-	fmt.Fprintln(stdout, "[*] Signing and installing Dopamine")
+	fmt.Fprintln(stdout, "[*] Signing and installing IPA")
 
 	var stderr bytes.Buffer
 	cmd := exec.Command("/bin/sh", "-c", resolved)

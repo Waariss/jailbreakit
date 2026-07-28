@@ -59,6 +59,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return runWorkflow(args[1:], stdout, stderr)
 	case "signer":
 		return signer(args[1:], stdin, stdout)
+	case "sideload":
+		return sideloadIPA(args[1:], stdout)
 	case "install":
 		return installIPA(args[1:], stdout, stderr)
 	case "download":
@@ -91,6 +93,7 @@ Common:
   jailbreakit evidence --format markdown
   jailbreakit burp-ca --cert cacert.der --install
   jailbreakit burp-ca verify --cert cacert.der
+  jailbreakit sideload ./App.ipa
   jailbreakit install ./App.ipa [--inspect]
   jailbreakit version
 
@@ -127,6 +130,8 @@ Utility:
   jailbreakit burp-ca --cert cacert.der --out burp-ca.mobileconfig
   jailbreakit signer install
   jailbreakit signer install --platform macos
+  jailbreakit sideload ./App.ipa --login --apple-id tester@example.com
+  jailbreakit sideload ./App.ipa --command "plumesign sign --package {ipa} --apple-id --register-and-install"
   jailbreakit download dopamine --out ./downloads
   jailbreakit doctor --install
   jailbreakit troubleshoot --from-log palera1n.log`)
@@ -712,6 +717,73 @@ func installIPA(args []string, stdout, stderr io.Writer) error {
 		Installer:  *installerName,
 		DryRun:     *dryRun,
 	}, stdout, stderr)
+}
+
+type sideloadArgs struct {
+	IPAPath string
+	Command string
+	Login   bool
+	AppleID string
+	DryRun  bool
+}
+
+func sideloadIPA(args []string, stdout io.Writer) error {
+	options, err := parseSideloadArgs(args)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(options.IPAPath); err != nil {
+		return err
+	}
+	if !strings.HasSuffix(strings.ToLower(options.IPAPath), ".ipa") {
+		return fmt.Errorf("IPA path must end with .ipa")
+	}
+
+	resolved, err := sideload.PreviewCommand(options.IPAPath, options.Command)
+	if err != nil {
+		if hint := sideload.InstallHint(); hint != "" {
+			return fmt.Errorf("%w; install a signer with: %s", err, hint)
+		}
+		return err
+	}
+	if options.DryRun {
+		fmt.Fprintf(stdout, "[dry-run] %s\n", resolved)
+		return nil
+	}
+	if options.Login || options.AppleID != "" {
+		if err := sideload.Login(options.AppleID, stdout); err != nil {
+			return err
+		}
+	}
+	if err := sideload.RunTerminal(options.IPAPath, options.Command, stdout); err != nil {
+		return err
+	}
+	fmt.Fprintln(stdout, "[+] IPA sideload done")
+	fmt.Fprintln(stdout, "[>] On iPhone: Settings > General > VPN & Device Management")
+	fmt.Fprintln(stdout, "[>] Trust the developer profile used by the signer, if prompted")
+	return nil
+}
+
+func parseSideloadArgs(args []string) (sideloadArgs, error) {
+	fs := flag.NewFlagSet("sideload", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	command := fs.String("command", "", "signer command template containing {ipa}")
+	login := fs.Bool("login", false, "run plumesign interactive Apple ID login first")
+	appleID := fs.String("apple-id", "", "Apple ID username passed to plumesign login")
+	dryRun := fs.Bool("dry-run", false, "print the resolved signer command without executing")
+	if err := fs.Parse(normalizeInstallArgs(args)); err != nil {
+		return sideloadArgs{}, err
+	}
+	if fs.NArg() != 1 {
+		return sideloadArgs{}, fmt.Errorf("usage: jailbreakit sideload <app.ipa>")
+	}
+	return sideloadArgs{
+		IPAPath: fs.Arg(0),
+		Command: *command,
+		Login:   *login,
+		AppleID: *appleID,
+		DryRun:  *dryRun,
+	}, nil
 }
 
 func normalizeInstallArgs(args []string) []string {

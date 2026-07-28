@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -172,11 +173,23 @@ func runHostInstall(options Options, stdout, stderr io.Writer) error {
 		return nil
 	}
 	fmt.Fprintln(stdout, "[*] Installing with ideviceinstaller on host")
-	if err := runCommand(cmd, stdout, stderr); err != nil {
+	var commandStderr bytes.Buffer
+	if err := runCommand(cmd, stdout, io.MultiWriter(stderr, &commandStderr)); err != nil {
+		if isSignatureVerificationFailure(commandStderr.String()) {
+			fmt.Fprintln(stdout, "[>] IPA signature rejected: use jailbreakit sideload <app.ipa>")
+			fmt.Fprintln(stdout, "[>] Or install AppSync with appinst/ipainstaller on an authorized jailbroken device")
+		}
 		return fmt.Errorf("host IPA install failed: %w", err)
 	}
 	fmt.Fprintln(stdout, "[+] IPA install done")
 	return nil
+}
+
+func isSignatureVerificationFailure(output string) bool {
+	output = strings.ToLower(output)
+	return strings.Contains(output, "applicationverificationfailed") ||
+		strings.Contains(output, "no code signature found") ||
+		strings.Contains(output, "failed to verify code signature")
 }
 
 func hostInstallCommand(ipaPath string) commandSpec {

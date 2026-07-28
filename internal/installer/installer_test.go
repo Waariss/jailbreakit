@@ -62,6 +62,21 @@ func TestMissingRemoteInstallerDetection(t *testing.T) {
 	}
 }
 
+func TestSignatureVerificationFailureDetection(t *testing.T) {
+	for _, output := range []string{
+		`ApplicationVerificationFailed`,
+		`Failed to verify code signature`,
+		`No code signature found`,
+	} {
+		if !isSignatureVerificationFailure(output) {
+			t.Fatalf("expected signature failure for %q", output)
+		}
+	}
+	if isSignatureVerificationFailure("Could not connect to lockdownd") {
+		t.Fatal("connection failure must not be classified as a signature failure")
+	}
+}
+
 func TestScpCommandUsesUppercasePortFlag(t *testing.T) {
 	got := scpCommand("App.ipa", "root", "127.0.0.1", 2222, "/tmp/App.ipa")
 	want := commandSpec{

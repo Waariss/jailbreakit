@@ -195,6 +195,7 @@ Common utility commands:
 ./jailbreakit evidence --format markdown
 ./jailbreakit burp-ca --cert cacert.der --install
 ./jailbreakit burp-ca verify --cert cacert.der --profile burp-ca.mobileconfig
+./jailbreakit sideload ./App.ipa
 ./jailbreakit install ./App.ipa
 ./jailbreakit install ./App.ipa --inspect
 ./jailbreakit version
@@ -349,6 +350,26 @@ Manual signer install:
 ./jailbreakit signer install --platform linux-x86_64
 ```
 
+Sideload an authorized local IPA through the detected external signer:
+
+```sh
+./jailbreakit sideload ./App.ipa
+./jailbreakit sideload ./App.ipa --login --apple-id tester@example.com
+```
+
+Use another local signer by providing a command template. The `{ipa}` placeholder is shell-quoted before execution:
+
+```sh
+./jailbreakit sideload ./App.ipa \
+  --command "plumesign sign --package {ipa} --apple-id --register-and-install"
+```
+
+Preview the resolved command without signing or installing:
+
+```sh
+./jailbreakit sideload ./App.ipa --dry-run
+```
+
 The signer is saved to:
 
 ```text
@@ -362,6 +383,8 @@ Apple ID handling:
 - If credentials are required, the local signer handles password and 2FA prompts interactively.
 - The selected signer may maintain its own local authentication or session state.
 - Users are encouraged to use an app-specific password or a dedicated lab Apple ID.
+- SideStore does not currently expose a direct integration in `jailbreakit`; use a supported external signer command where appropriate.
+- Sideloading does not guarantee that private entitlements required by specialized jailbreak applications will remain usable. Follow the application's upstream installation guide.
 
 After Dopamine is installed, trust the developer profile on the iPhone:
 
@@ -389,6 +412,14 @@ Default connection details:
 - installer mode: auto-detects `appinst`, then `ipainstaller`, then falls back to host-side `ideviceinstaller`
 
 The iPhone must already be jailbroken and SSH must be running for the device-side install path. If neither `appinst` nor `ipainstaller` exists on the iPhone, `jailbreakit` falls back to `ideviceinstaller install <ipa>` on the host when available.
+
+Host installation requires a code signature accepted by iOS. If iOS reports `ApplicationVerificationFailed`, use the explicit sideload flow for a normal test IPA:
+
+```sh
+./jailbreakit sideload ./App.ipa
+```
+
+Alternatively, use `appinst` or `ipainstaller` with AppSync on an authorized jailbroken device. Specialized packages such as TrollStore `.tipa` files must use their upstream-supported installation route.
 
 To force host-side installation:
 
