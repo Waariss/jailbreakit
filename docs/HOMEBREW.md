@@ -19,7 +19,7 @@ For a new release, copy the tested Formula from `jailbreakit/packaging/homebrew/
 For a released tag, update the template from this repository:
 
 ```sh
-./scripts/update-homebrew-formula.sh v1.4.1
+./scripts/update-homebrew-formula.sh v1.4.2
 ```
 
 The helper downloads the tagged source archive, calculates SHA256 using `shasum` or `sha256sum`, and changes only the Formula URL and checksum.

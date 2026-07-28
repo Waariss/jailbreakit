@@ -16,7 +16,7 @@ Project documents:
 
 - [Security policy](SECURITY.md)
 - [MASTG-style positioning](docs/MASTG-POSITIONING.md)
-- [v1.4.1 release notes](docs/RELEASE-v1.4.1.md)
+- [v1.4.2 release notes](docs/RELEASE-v1.4.2.md)
 - [Example outputs](examples/)
 - [OWASP MASTG issue draft](docs/OWASP-MASTG-ISSUE-DRAFT.md)
 
@@ -72,7 +72,7 @@ go install github.com/Waariss/jailbreakit/cmd/jailbreakit@latest
 Install a pinned version:
 
 ```sh
-go install github.com/Waariss/jailbreakit/cmd/jailbreakit@v1.4.1
+go install github.com/Waariss/jailbreakit/cmd/jailbreakit@v1.4.2
 ```
 
 Make sure your Go binary directory, commonly `$(go env GOPATH)/bin`, is in `PATH`.
@@ -88,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh
 Install a pinned release:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | JAILBREAKIT_VERSION=v1.4.1 sh
+curl -fsSL https://raw.githubusercontent.com/Waariss/jailbreakit/main/install.sh | JAILBREAKIT_VERSION=v1.4.2 sh
 ```
 
 Use a custom install directory:
@@ -547,6 +547,6 @@ Respect the licenses, documentation, and safety guidance of the upstream project
 
 ## Status
 
-Current public release for iOS pentest lab readiness. `jailbreakit` v1.4.1 focuses on authorized iOS pentest environment preparation, MASTG-style dynamic analysis workflows, and end-to-end lab readiness checks.
+Current public release for iOS pentest lab readiness. `jailbreakit` v1.4.2 adds an explicit local IPA sideload workflow while preserving authorized-testing boundaries and existing lab readiness features.
 
 `jailbreakit` is an independent project and is not affiliated with, endorsed by, or officially maintained by OWASP.
