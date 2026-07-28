@@ -1,8 +1,8 @@
 class Jailbreakit < Formula
   desc "iOS pentest lab setup helper for authorized security testing"
   homepage "https://github.com/Waariss/jailbreakit"
-  url "https://github.com/Waariss/jailbreakit/archive/refs/tags/v1.4.1.tar.gz"
-  sha256 "8f7ea836f42eb6795e563c217dfbd688c394e71fc30cb03aff04ea7fda585cd2"
+  url "https://github.com/Waariss/jailbreakit/archive/refs/tags/v1.4.2.tar.gz"
+  sha256 "e67e4ab9125343dfb1391885293e765c8517acb7550a77abc3bcf50803598e4e"
   license "MIT"
 
   depends_on "go" => :build
