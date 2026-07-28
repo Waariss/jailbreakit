@@ -30,6 +30,39 @@ func TestInstallAcceptsFlagsAfterIPA(t *testing.T) {
 	}
 }
 
+func TestParseSideloadFlagsAfterIPA(t *testing.T) {
+	got, err := parseSideloadArgs([]string{"App.ipa", "--command", "sign {ipa}", "--login", "--apple-id", "tester@example.com", "--dry-run"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IPAPath != "App.ipa" || got.Command != "sign {ipa}" || !got.Login || got.AppleID != "tester@example.com" || !got.DryRun {
+		t.Fatalf("unexpected sideload options: %#v", got)
+	}
+}
+
+func TestSideloadDryRun(t *testing.T) {
+	ipaPath := filepath.Join(t.TempDir(), "My App.ipa")
+	if err := os.WriteFile(ipaPath, []byte("ipa"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	err := sideloadIPA([]string{ipaPath, "--command", "sign --file {ipa}", "--dry-run"}, &stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "sign --file") || !strings.Contains(stdout.String(), "'"+ipaPath+"'") {
+		t.Fatalf("unexpected dry-run output:\n%s", stdout.String())
+	}
+}
+
+func TestHelpIncludesSideload(t *testing.T) {
+	var stdout bytes.Buffer
+	printHelp(&stdout)
+	if !strings.Contains(stdout.String(), "jailbreakit sideload ./App.ipa") {
+		t.Fatalf("sideload missing from help:\n%s", stdout.String())
+	}
+}
+
 func TestPrintDeviceDoesNotPrefixBackslash(t *testing.T) {
 	var stdout bytes.Buffer
 	printDevice(&stdout, device.Info{ProductType: "iPhone10,5", OSVersion: "16.7.10"})
